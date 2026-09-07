@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ModuLens report</title>
+  <link rel="stylesheet" href="assets/modulens.css">
+  <script defer src="assets/modulens-data.js"></script>
+  <script defer src="assets/modulens.js"></script>
+</head>
+<body>
+  <header class="hero">
+    <div class="page-width">
+      <p class="eyebrow">MODULENS</p>
+      <h1>Dependency health report</h1>
+      <p>Explore module structure, impact, library alignment, and actionable findings.</p>
+    </div>
+  </header>
+
+  <main class="page-width">
+    <section id="summary" class="cards" aria-label="Project summary"></section>
+
+    <section class="panel" aria-labelledby="findings-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ACTIONABLE</p>
+          <h2 id="findings-title">Findings</h2>
+        </div>
+        <label for="finding-filter">Filter findings
+          <input id="finding-filter" type="search" placeholder="Rule, module, library…">
+        </label>
+      </div>
+      <div id="findings"></div>
+    </section>
+
+    <section class="split">
+      <section class="panel" aria-labelledby="module-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">DEPENDENCY EXPLORER</p>
+            <h2 id="module-title">Module</h2>
+          </div>
+          <label for="module-select">Choose module
+            <select id="module-select"></select>
+          </label>
+        </div>
+        <div id="module-details" class="module-details"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="libraries-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">EXTERNAL DEPENDENCIES</p>
+            <h2 id="libraries-title">Libraries</h2>
+          </div>
+        </div>
+        <div id="libraries"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
