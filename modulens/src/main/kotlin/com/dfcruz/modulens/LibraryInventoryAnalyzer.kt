@@ -24,10 +24,13 @@ object LibraryInventoryAnalyzer {
         val resolvedVersions = resolvedLibraries.associate { coordinate ->
             coordinate.substringBeforeLast(":") to coordinate.substringAfterLast(":")
         }
-        val entries = declarations
+        val declaredOccurrences = declarations
             .flatMap { (module, coordinates) -> coordinates.map { it to module } }
             .groupBy({ it.first.substringBeforeLast(":") }, { it })
-            .map { (identifier, occurrences) ->
+        val entries = (declaredOccurrences.keys + resolvedVersions.keys)
+            .sorted()
+            .map { identifier ->
+                val occurrences = declaredOccurrences[identifier].orEmpty()
                 LibraryInventoryEntry(
                     identifier = identifier,
                     declaredVersions = occurrences.map { it.first.substringAfterLast(":") }.distinct().sorted(),
@@ -35,7 +38,6 @@ object LibraryInventoryAnalyzer {
                     resolvedVersion = resolvedVersions[identifier],
                 )
             }
-            .sortedBy { it.identifier }
 
         return LibraryInventoryAnalysis(entries, declarations.values.sumOf { it.size })
     }

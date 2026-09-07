@@ -177,6 +177,23 @@ class ModuleAnalysePlugin : Plugin<Project> {
                         } else emptyList()
                     },
                 )
+                this.moduleLibraries.set(
+                    project.provider {
+                        val moduleGraph = ModuleGraph(graph)
+                        graph.keys.associateWith { module ->
+                            val libraryCoordinates = buildList {
+                                addAll(declaredLibraries[module].orEmpty())
+                                moduleGraph.transitiveDependencies(module)
+                                    .forEach { dependency -> addAll(declaredLibraries[dependency].orEmpty()) }
+                            }.distinct()
+                            if (extension.analysis.resolveExternalLibraries.get()) {
+                                ProjectModuleGraph.resolveLibraryCoordinates(project, libraryCoordinates)
+                            } else {
+                                libraryCoordinates.sorted()
+                            }
+                        }
+                    },
+                )
                 this.outputDirectory.set(project.layout.buildDirectory.dir("reports/modulens/html"))
             }
 

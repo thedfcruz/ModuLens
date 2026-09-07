@@ -1,5 +1,6 @@
 package com.dfcruz.modulens
 
+import com.dfcruz.modulens.dashboard.HtmlDashboardRenderer
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
@@ -11,10 +12,16 @@ import org.gradle.api.tasks.TaskAction
 abstract class ModuleDashboardTask : DefaultTask() {
     @get:Input
     abstract val graph: MapProperty<String, List<String>>
+
     @get:Input
     abstract val libraryDeclarations: MapProperty<String, List<String>>
+
     @get:Input
     abstract val resolvedLibraries: ListProperty<String>
+
+    @get:Input
+    abstract val moduleLibraries: MapProperty<String, List<String>>
+
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
@@ -29,6 +36,7 @@ abstract class ModuleDashboardTask : DefaultTask() {
             project = moduleGraph.analyzeProject(),
             libraries = libraries,
             findings = findings,
+            moduleLibraries = moduleLibraries.get(),
         )
         HtmlDashboardRenderer.write(outputDirectory.get().asFile, dashboardData)
         logger.lifecycle("ModuLens HTML dashboard: ${outputDirectory.get().asFile.resolve("index.html")}")

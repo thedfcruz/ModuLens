@@ -1,3 +1,5 @@
+import com.dfcruz.modulens.DependencyScope
+
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -8,9 +10,21 @@ plugins {
 }
 
 moduLens {
+    scopes.set(DependencyScope.entries.toSet())
+
     analysis {
+        resolveExternalLibraries.set(true)
         exportText.set(true)
         exportJson.set(true)
         exportHtml.set(true)
+    }
+
+    verification {
+        failOnCycles.set(true)
+        failOnVersionConflicts.set(true)
+        // The sample deliberately contains a redundant direct dependency for analysis demonstrations.
+        failOnRedundantDependencies.set(false)
+        maxDependencyDepth.set(3)
+        maxDirectDependencies.set(5)
     }
 }

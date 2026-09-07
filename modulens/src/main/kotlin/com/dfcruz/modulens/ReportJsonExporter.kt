@@ -6,6 +6,7 @@ object ReportJsonExporter {
         project: ProjectGraphAnalysis,
         libraries: LibraryInventoryAnalysis,
         findings: List<Finding>,
+        moduleLibraries: Map<String, List<String>>,
     ): String = """
         {
           "project": {
@@ -17,9 +18,9 @@ object ReportJsonExporter {
           },
           "modules": [${graph.modules.sorted().joinToString(",") { module ->
               val analysis = graph.analyzeModule(module)
-              "{\"path\":${string(module)},\"directDependencies\":${arrays(analysis.directDependencies)},\"transitiveDependencies\":${arrays(analysis.transitiveDependencies)},\"directDependents\":${arrays(analysis.directDependents)},\"affectedModules\":${arrays(analysis.allDependents)},\"dependencyDepth\":${analysis.dependencyDepth},\"dependentDepth\":${analysis.dependentDepth},\"projectCoverage\":${analysis.projectCoverage}}"
+              "{\"path\":${string(module)},\"directDependencies\":${arrays(analysis.directDependencies)},\"transitiveDependencies\":${arrays(analysis.transitiveDependencies)},\"directDependents\":${arrays(analysis.directDependents)},\"affectedModules\":${arrays(analysis.allDependents)},\"libraries\":${arrays(moduleLibraries[module].orEmpty())},\"dependencyDepth\":${analysis.dependencyDepth},\"dependentDepth\":${analysis.dependentDepth},\"projectCoverage\":${analysis.projectCoverage}}"
           }}],
-          "libraries": ${libraries(libraries)},
+          "libraries": ${dashboardLibraries(libraries, moduleLibraries)},
           "findings": ${findings(findings)}
         }
     """.trimIndent()
@@ -64,6 +65,25 @@ object ReportJsonExporter {
           }}]
         }
     """.trimIndent()
+
+    private fun dashboardLibraries(
+        analysis: LibraryInventoryAnalysis,
+        moduleLibraries: Map<String, List<String>>,
+    ): String = """
+        {
+          "directDeclarations": ${analysis.directDeclarations},
+          "versionConflicts": ${arrays(analysis.versionConflicts.map { it.identifier })},
+          "libraries": [${analysis.entries.joinToString(",") { entry ->
+              val modules = moduleLibraries
+                  .filterValues { coordinates -> entry.identifier in coordinates.map(::libraryIdentifier) }
+                  .keys
+                  .sorted()
+              "{\"identifier\":${string(entry.identifier)},\"declaredVersions\":${arrays(entry.declaredVersions)},\"resolvedVersion\":${entry.resolvedVersion?.let(::string) ?: "null"},\"modules\":${arrays(modules)}}"
+          }}]
+        }
+    """.trimIndent()
+
+    private fun libraryIdentifier(coordinate: String): String = coordinate.substringBeforeLast(":")
 
     private fun arrays(values: Iterable<String>): String = values.joinToString(prefix = "[", postfix = "]") { string(it) }
     private fun nestedArrays(values: Iterable<List<String>>): String = values.joinToString(prefix = "[", postfix = "]") { arrays(it) }

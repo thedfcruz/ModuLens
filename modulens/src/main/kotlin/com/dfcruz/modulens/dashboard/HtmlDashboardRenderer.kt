@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.dashboard
 
 import java.io.File
 

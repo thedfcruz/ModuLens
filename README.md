@@ -184,7 +184,13 @@ Enable `exportHtml` to generate the dashboard automatically after any local anal
 ./gradlew moduLensDashboard
 ```
 
-Open `build/reports/modulens/html/index.html` in a browser. The dashboard works without a network connection and includes a summary, filterable findings, module dependency and impact explorer, and library inventory.
+Open `build/reports/modulens/html/index.html` in a browser. The dashboard works without a network connection and includes:
+
+- A searchable module explorer with dependencies, dependents, impact, and resolved libraries.
+- A searchable catalog of all resolved external libraries.
+- Automatic library filtering when a module is selected.
+- Module links on each library, so you can navigate from a library to every module that uses it.
+- Filterable findings with dependency paths and suggested fixes.
 
 The JSON files are intended for CI artifacts or later integration with pull-request reporting.
 
