@@ -21,6 +21,8 @@ class ProjectFindingsAnalyzerTest {
         val finding = findings.single { it.id == FindingId.REDUNDANT_MODULE_DEPENDENCY }
         assertEquals(":app → :domain", finding.subject)
         assertEquals(listOf(":app", ":feature", ":domain"), finding.evidence.dependencyPath)
+        assertEquals(listOf(":app", ":domain", ":feature"), finding.references.modules)
+        assertEquals(listOf(ModuleEdgeReference(":app", ":domain")), finding.references.moduleEdges)
         assertTrue(finding.suggestedFix!!.contains("Remove the direct dependency"))
     }
 
@@ -38,6 +40,8 @@ class ProjectFindingsAnalyzerTest {
         val finding = findings.single { it.id == FindingId.VERSION_CONFLICT }
         assertEquals("com.example:library", finding.subject)
         assertEquals(listOf(":app", ":feature"), finding.evidence.declarations)
+        assertEquals(listOf(":app", ":feature"), finding.references.modules)
+        assertEquals(listOf("com.example:library"), finding.references.libraries)
     }
 
     private fun snapshot(

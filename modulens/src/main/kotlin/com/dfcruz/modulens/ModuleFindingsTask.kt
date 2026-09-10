@@ -14,7 +14,6 @@ abstract class ModuleFindingsTask : DefaultTask() {
     @get:Input abstract val libraryDeclarations: MapProperty<String, List<String>>
     @get:Input abstract val resolvedLibraries: ListProperty<String>
     @get:Optional @get:OutputFile abstract val textReport: RegularFileProperty
-    @get:Optional @get:OutputFile abstract val jsonReport: RegularFileProperty
 
     @TaskAction
     fun action() {
@@ -45,6 +44,5 @@ abstract class ModuleFindingsTask : DefaultTask() {
         }
         logger.lifecycle(output)
         if (textReport.isPresent) ReportFileWriter.write(textReport.get().asFile, output)
-        if (jsonReport.isPresent) ReportFileWriter.write(jsonReport.get().asFile, ReportJsonExporter.findings(findings))
     }
 }

@@ -44,10 +44,6 @@ abstract class ModuleStatisticsTask : DefaultTask() {
     @get:Optional
     @get:OutputFile
     abstract val textReport: RegularFileProperty
-    @get:Optional
-    @get:OutputFile
-    abstract val jsonReport: RegularFileProperty
-
     @TaskAction
     fun action() {
         val moduleName = module.get()
@@ -266,10 +262,6 @@ abstract class ModuleStatisticsTask : DefaultTask() {
 
         logger.lifecycle(output)
         if (textReport.isPresent) ReportFileWriter.write(textReport.get().asFile, output)
-        if (jsonReport.isPresent) ReportFileWriter.write(
-            jsonReport.get().asFile,
-            ReportJsonExporter.module(analysis)
-        )
     }
 
     private fun yesNo(value: Boolean): String = if (value) "YES" else "NO"

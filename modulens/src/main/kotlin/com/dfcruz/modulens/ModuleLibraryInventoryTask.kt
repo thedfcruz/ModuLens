@@ -1,13 +1,13 @@
 package com.dfcruz.modulens
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
-import org.gradle.api.file.RegularFileProperty
 
 abstract class ModuleLibraryInventoryTask : DefaultTask() {
 
@@ -18,7 +18,6 @@ abstract class ModuleLibraryInventoryTask : DefaultTask() {
     abstract val resolvedLibraries: ListProperty<String>
 
     @get:Optional @get:OutputFile abstract val textReport: RegularFileProperty
-    @get:Optional @get:OutputFile abstract val jsonReport: RegularFileProperty
 
     @TaskAction
     fun action() {
@@ -65,6 +64,5 @@ abstract class ModuleLibraryInventoryTask : DefaultTask() {
         }
         logger.lifecycle(output)
         if (textReport.isPresent) ReportFileWriter.write(textReport.get().asFile, output)
-        if (jsonReport.isPresent) ReportFileWriter.write(jsonReport.get().asFile, ReportJsonExporter.libraries(analysis))
     }
 }

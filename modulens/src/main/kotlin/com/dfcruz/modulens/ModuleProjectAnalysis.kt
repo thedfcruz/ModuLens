@@ -17,10 +17,6 @@ abstract class ModuleProjectAnalysis : DefaultTask() {
     @get:OutputFile
     abstract val textReport: RegularFileProperty
 
-    @get:Optional
-    @get:OutputFile
-    abstract val jsonReport: RegularFileProperty
-
     @TaskAction
     fun action() {
         val analysis = ModuleGraph(graph.get()).analyzeProject()
@@ -91,10 +87,6 @@ abstract class ModuleProjectAnalysis : DefaultTask() {
 
         logger.lifecycle(output)
         if (textReport.isPresent) ReportFileWriter.write(textReport.get().asFile, output)
-        if (jsonReport.isPresent) ReportFileWriter.write(
-            jsonReport.get().asFile,
-            ReportJsonExporter.project(analysis)
-        )
     }
 
 }

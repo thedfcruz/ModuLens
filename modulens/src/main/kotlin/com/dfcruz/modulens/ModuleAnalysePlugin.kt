@@ -48,6 +48,66 @@ class ModuleAnalysePlugin : Plugin<Project> {
                     .distinct()
                     .sorted()
             }
+            val directModuleDependencyDeclarations = modules.values
+                .flatMap { module ->
+                    module.projectDependencies
+                        .filter { it.scope in selectedScopes && it.path in includedPaths }
+                        .map { dependency ->
+                            ReportContractCodec.moduleDependency(
+                                DirectModuleDependencyDeclaration(
+                                    from = module.path,
+                                    to = dependency.path,
+                                    configuration = dependency.configuration,
+                                    scope = dependency.scope.optionName,
+                                ),
+                            )
+                        }
+                }
+                .distinct()
+                .sorted()
+            val directLibraryDependencyDeclarations = modules.values
+                .flatMap { module ->
+                    module.declaredLibraryDependencies
+                        .filter { it.scope in selectedScopes }
+                        .map { dependency ->
+                            ReportContractCodec.libraryDependency(
+                                DirectLibraryDependencyDeclaration(
+                                    module = module.path,
+                                    identifier = dependency.moduleIdentifier,
+                                    declaredVersion = dependency.version,
+                                    configuration = dependency.configuration,
+                                    scope = dependency.scope.optionName,
+                                ),
+                            )
+                        }
+                }
+                .distinct()
+                .sorted()
+            val resolvedLibraries = project.provider {
+                if (extension.analysis.resolveExternalLibraries.get()) {
+                    ProjectModuleGraph.resolveLibraryCoordinates(
+                        project,
+                        declaredLibraries.values.flatten().distinct(),
+                    )
+                } else {
+                    emptyList()
+                }
+            }
+            val resolvedLibrariesByModule = project.provider {
+                val moduleGraph = ModuleGraph(graph)
+                graph.keys.associateWith { module ->
+                    val libraryCoordinates = buildList {
+                        addAll(declaredLibraries[module].orEmpty())
+                        moduleGraph.transitiveDependencies(module)
+                            .forEach { dependency -> addAll(declaredLibraries[dependency].orEmpty()) }
+                    }.distinct()
+                    if (extension.analysis.resolveExternalLibraries.get()) {
+                        ProjectModuleGraph.resolveLibraryCoordinates(project, libraryCoordinates)
+                    } else {
+                        libraryCoordinates.sorted()
+                    }
+                }
+            }
 
             val moduleTask = project.tasks.register<ModuleStatisticsTask>("moduLensModule") {
                 group = "ModuLens"
@@ -107,11 +167,6 @@ class ModuleAnalysePlugin : Plugin<Project> {
                         project.layout.buildDirectory.file("reports/modulens/modules/${moduleName.trim(':').replace(':', '-')}.txt").get()
                     })
                 }
-                if (extension.analysis.exportJson.get()) {
-                    this.jsonReport.set(this.module.map { moduleName ->
-                        project.layout.buildDirectory.file("reports/modulens/modules/${moduleName.trim(':').replace(':', '-')}.json").get()
-                    })
-                }
             }
 
             val projectAnalysisTask = project.tasks.register<ModuleProjectAnalysis>("moduLensAnalyze") {
@@ -121,27 +176,15 @@ class ModuleAnalysePlugin : Plugin<Project> {
                 if (extension.analysis.exportText.get()) {
                     this.textReport.set(project.layout.buildDirectory.file("reports/modulens/project.txt"))
                 }
-                if (extension.analysis.exportJson.get()) {
-                    this.jsonReport.set(project.layout.buildDirectory.file("reports/modulens/project.json"))
-                }
             }
 
             val libraryTask = project.tasks.register<ModuleLibraryInventoryTask>("moduLensLibraries") {
                 group = "ModuLens"
                 description = "Lists external library declarations and version alignment conflicts."
                 this.libraryDeclarations.set(declaredLibraries)
-                this.resolvedLibraries.set(
-                    project.provider {
-                        if (extension.analysis.resolveExternalLibraries.get()) {
-                            ProjectModuleGraph.resolveLibraryCoordinates(project, declaredLibraries.values.flatten().distinct())
-                        } else emptyList()
-                    },
-                )
+                this.resolvedLibraries.set(resolvedLibraries)
                 if (extension.analysis.exportText.get()) {
                     this.textReport.set(project.layout.buildDirectory.file("reports/modulens/libraries.txt"))
-                }
-                if (extension.analysis.exportJson.get()) {
-                    this.jsonReport.set(project.layout.buildDirectory.file("reports/modulens/libraries.json"))
                 }
             }
 
@@ -150,18 +193,9 @@ class ModuleAnalysePlugin : Plugin<Project> {
                 description = "Reports actionable dependency and module-structure findings."
                 this.graph.set(graph)
                 this.libraryDeclarations.set(declaredLibraries)
-                this.resolvedLibraries.set(
-                    project.provider {
-                        if (extension.analysis.resolveExternalLibraries.get()) {
-                            ProjectModuleGraph.resolveLibraryCoordinates(project, declaredLibraries.values.flatten().distinct())
-                        } else emptyList()
-                    },
-                )
+                this.resolvedLibraries.set(resolvedLibraries)
                 if (extension.analysis.exportText.get()) {
                     this.textReport.set(project.layout.buildDirectory.file("reports/modulens/findings.txt"))
-                }
-                if (extension.analysis.exportJson.get()) {
-                    this.jsonReport.set(project.layout.buildDirectory.file("reports/modulens/findings.json"))
                 }
             }
 
@@ -170,31 +204,33 @@ class ModuleAnalysePlugin : Plugin<Project> {
                 description = "Generates an interactive HTML dashboard for module and dependency analysis."
                 this.graph.set(graph)
                 this.libraryDeclarations.set(declaredLibraries)
-                this.resolvedLibraries.set(
-                    project.provider {
-                        if (extension.analysis.resolveExternalLibraries.get()) {
-                            ProjectModuleGraph.resolveLibraryCoordinates(project, declaredLibraries.values.flatten().distinct())
-                        } else emptyList()
-                    },
-                )
-                this.moduleLibraries.set(
-                    project.provider {
-                        val moduleGraph = ModuleGraph(graph)
-                        graph.keys.associateWith { module ->
-                            val libraryCoordinates = buildList {
-                                addAll(declaredLibraries[module].orEmpty())
-                                moduleGraph.transitiveDependencies(module)
-                                    .forEach { dependency -> addAll(declaredLibraries[dependency].orEmpty()) }
-                            }.distinct()
-                            if (extension.analysis.resolveExternalLibraries.get()) {
-                                ProjectModuleGraph.resolveLibraryCoordinates(project, libraryCoordinates)
-                            } else {
-                                libraryCoordinates.sorted()
-                            }
-                        }
-                    },
-                )
+                this.resolvedLibraries.set(resolvedLibraries)
+                this.moduleLibraries.set(resolvedLibrariesByModule)
+                this.moduleDependencyDeclarations.set(directModuleDependencyDeclarations)
+                this.libraryDependencyDeclarations.set(directLibraryDependencyDeclarations)
+                this.pluginId.set("com.dfcruz.modulens")
+                this.gradleVersion.set(project.gradle.gradleVersion)
+                this.includedScopes.set(selectedScopes.map(DependencyScope::optionName).sorted())
+                this.excludedModules.set(extension.excludedModules.map { it.sorted().toList() })
+                this.externalLibraryResolutionEnabled.set(extension.analysis.resolveExternalLibraries)
                 this.outputDirectory.set(project.layout.buildDirectory.dir("reports/modulens/html"))
+            }
+
+            project.tasks.register<FullJsonReportTask>("moduLensReport") {
+                group = "ModuLens"
+                description = "Exports the complete ModuLens analysis as one JSON report for automation and AI review."
+                this.graph.set(graph)
+                this.libraryDeclarations.set(declaredLibraries)
+                this.resolvedLibraries.set(resolvedLibraries)
+                this.moduleLibraries.set(resolvedLibrariesByModule)
+                this.moduleDependencyDeclarations.set(directModuleDependencyDeclarations)
+                this.libraryDependencyDeclarations.set(directLibraryDependencyDeclarations)
+                this.pluginId.set("com.dfcruz.modulens")
+                this.gradleVersion.set(project.gradle.gradleVersion)
+                this.includedScopes.set(selectedScopes.map(DependencyScope::optionName).sorted())
+                this.excludedModules.set(extension.excludedModules.map { it.sorted().toList() })
+                this.externalLibraryResolutionEnabled.set(extension.analysis.resolveExternalLibraries)
+                this.outputFile.set(project.layout.buildDirectory.file("reports/modulens/report.json"))
             }
 
             if (extension.analysis.exportHtml.get()) {

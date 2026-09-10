@@ -22,6 +22,7 @@ data class LibraryDependencyDetails(
     val group: String,
     val name: String,
     val version: String,
+    val configuration: String,
     val scope: DependencyScope,
 ) {
     val coordinate: String
@@ -82,6 +83,7 @@ object ProjectModuleGraph {
                             group = group,
                             name = dependency.name,
                             version = dependency.version ?: "unspecified",
+                            configuration = configuration.name,
                             scope = scope,
                         )
                     }
@@ -122,6 +124,7 @@ object ProjectModuleGraph {
                     group = identifier.group,
                     name = identifier.module,
                     version = identifier.version,
+                    configuration = "detached",
                     scope = DependencyScope.PRODUCTION,
                 )
             }

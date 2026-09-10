@@ -25,7 +25,6 @@ abstract class ModuLensExtension @Inject constructor(objects: ObjectFactory) {
 abstract class ModuLensAnalysisExtension @Inject constructor(objects: ObjectFactory) {
     val resolveExternalLibraries: Property<Boolean> = objects.property(Boolean::class.java).convention(true)
     val exportText: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    val exportJson: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
     val exportHtml: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
 }
 

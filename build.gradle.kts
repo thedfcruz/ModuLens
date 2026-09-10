@@ -15,7 +15,6 @@ moduLens {
     analysis {
         resolveExternalLibraries.set(true)
         exportText.set(true)
-        exportJson.set(true)
         exportHtml.set(true)
     }
 

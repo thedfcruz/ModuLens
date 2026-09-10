@@ -12,7 +12,9 @@
   const moduleLink = (path) => `<button class="entity-link" type="button" data-module="${escape(path)}">${escape(path)}</button>`;
   const libraryLink = (id) => `<button class="entity-link" type="button" data-library="${escape(id)}">${escape(id)}</button>`;
   const label = (value) => value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
-  const relatedModules = (finding) => modules.filter((item) => [finding.subject, finding.message, ...finding.dependencyPath, ...finding.declarations].some((value) => value.includes(item.path))).map((item) => item.path);
+  const relatedModules = (finding) => finding.references?.modules?.length
+    ? finding.references.modules
+    : modules.filter((item) => [finding.subject, finding.message, ...finding.dependencyPath, ...finding.declarations].some((value) => value.includes(item.path))).map((item) => item.path);
 
   const summary = [[data.project.modules, "Modules"], [data.project.dependencyEdges, "Dependency edges"], [data.project.maximumDependencyDepth, "Maximum depth"], [findings.length, "Findings"], [findings.filter((item) => item.severity === "ERROR").length, "Errors"], [data.libraries.versionConflicts.length, "Version conflicts"]];
   $("summary").innerHTML = summary.map(([value, name], index) => `<article class="summary-card ${index === 3 ? "emphasis" : ""}"><span>${name}</span><strong>${value}</strong></article>`).join("");

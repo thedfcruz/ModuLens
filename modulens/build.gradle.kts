@@ -1,9 +1,11 @@
 plugins {
     `kotlin-dsl`
+    alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.maven.publish)
 }
 
 dependencies {
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
 }
 

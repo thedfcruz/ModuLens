@@ -50,11 +50,12 @@ All tasks appear under the `ModuLens` group in `./gradlew tasks`.
 
 | Task | Purpose |
 | --- | --- |
-| `moduLensAnalyze` | Summarises the complete module graph, including depth, hotspots, classifications, and cycles. |
+| `moduLensAnalyze` | Summarises the complete module graph, including depth, hotspots, classifications, and cycles. Generates the dashboard too when `exportHtml` is enabled. |
 | `moduLensModule --module=:path` | Shows dependencies, dependents, impact, libraries, scopes, cycles, and potential redundant declarations for one module. |
 | `moduLensLibraries` | Lists external library declarations, resolved versions, and version-alignment conflicts. |
 | `moduLensFindings` | Reports actionable dependency findings with evidence and suggested fixes. |
-| `moduLensDashboard` | Generates an interactive HTML dashboard for module, finding, impact, and library analysis. |
+| `moduLensDashboard` | Generates only the interactive HTML dashboard for module, finding, impact, and library analysis. |
+| `moduLensReport` | Exports the complete graph, module analysis, library inventory, and findings as one JSON report for automation or AI review. |
 | `moduLensVerify` | Applies configured policies and fails the build for violations; intended for CI. |
 
 ### Project-wide tasks
@@ -64,6 +65,7 @@ All tasks appear under the `ModuLens` group in `./gradlew tasks`.
 ./gradlew moduLensLibraries
 ./gradlew moduLensFindings
 ./gradlew moduLensDashboard
+./gradlew moduLensReport
 ./gradlew moduLensVerify
 ```
 
@@ -118,8 +120,9 @@ moduLens {
     analysis {
         // Resolves external dependency graphs. Disable for faster, declaration-only analysis.
         resolveExternalLibraries.set(true)
+        // Writes the terminal output from local analysis tasks to text files.
         exportText.set(true)
-        exportJson.set(true)
+        // Generates the HTML dashboard after local analysis tasks.
         exportHtml.set(true)
     }
 
@@ -165,20 +168,20 @@ For example, `./gradlew moduLensModule --module=:feature:dashboard` then analyse
 
 ## Reports
 
-Report export is opt-in. Enable text, JSON, HTML, or any combination in `moduLens.analysis`.
+Text and HTML export are opt-in. Enable either or both in `moduLens.analysis`.
 
 Reports are generated under the root project's `build/reports/modulens` directory:
 
-| Task | Text report | JSON report |
-| --- | --- | --- |
-| `moduLensAnalyze` | `project.txt` | `project.json` |
-| `moduLensModule` | `modules/<module-path>.txt` | `modules/<module-path>.json` |
-| `moduLensLibraries` | `libraries.txt` | `libraries.json` |
-| `moduLensFindings` | `findings.txt` | `findings.json` |
+| Task | Text report |
+| --- | --- |
+| `moduLensAnalyze` | `project.txt` |
+| `moduLensModule` | `modules/<module-path>.txt` |
+| `moduLensLibraries` | `libraries.txt` |
+| `moduLensFindings` | `findings.txt` |
 
 ### Interactive HTML dashboard
 
-Enable `exportHtml` to generate the dashboard automatically after any local analysis task, or run it directly:
+`moduLensAnalyze` provides the concise terminal summary; `moduLensDashboard` provides the visual explorer. When `exportHtml` is enabled, `moduLensAnalyze` and each focused local analysis task automatically generate the same dashboard after completing. Run `moduLensDashboard` directly when you only need to refresh the visual report:
 
 ```bash
 ./gradlew moduLensDashboard
@@ -192,7 +195,17 @@ Open `build/reports/modulens/html/index.html` in a browser. The dashboard works 
 - Module links on each library, so you can navigate from a library to every module that uses it.
 - Filterable findings with dependency paths and suggested fixes.
 
-The JSON files are intended for CI artifacts or later integration with pull-request reporting.
+### Full JSON report for automation and AI review
+
+Run the aggregate report directly when a tool needs the complete project context in one file:
+
+```bash
+./gradlew moduLensReport
+```
+
+It writes `build/reports/modulens/report.json`. This is the only JSON export: it contains a versioned schema, analysis metadata, project summary, every module's graph relationships and resolved libraries, direct module and library declarations with Gradle configuration and scope, and all findings.
+
+The report contract is documented in [the JSON Schema](docs/modulens-full-report.schema.json). `schemaVersion` follows a compatibility policy: additive fields remain in the current version; incompatible field changes require a new version. Findings include explicit module, library, and module-edge references so tools do not need to parse human-readable messages.
 
 ## CI verification
 

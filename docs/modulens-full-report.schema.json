@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thedfcruz/ModuLens/blob/main/docs/modulens-full-report.schema.json",
+  "title": "ModuLens full report",
+  "description": "Schema version 1 for the machine-readable ModuLens project analysis report.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "reportType",
+    "metadata",
+    "project",
+    "directModuleDependencies",
+    "directLibraryDeclarations",
+    "modules",
+    "libraries",
+    "findings"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "reportType": { "const": "modulens-full-report" },
+    "metadata": {
+      "type": "object",
+      "required": ["pluginId", "gradleVersion", "includedScopes", "excludedModules", "externalLibraryResolution"],
+      "properties": {
+        "pluginId": { "type": "string" },
+        "gradleVersion": { "type": "string" },
+        "includedScopes": { "$ref": "#/$defs/stringArray" },
+        "excludedModules": { "$ref": "#/$defs/stringArray" },
+        "externalLibraryResolution": {
+          "type": "object",
+          "required": ["enabled", "status"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "status": { "enum": ["completed", "skipped"] }
+          }
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["modules", "dependencyEdges", "averageDependencies", "maximumDependencyDepth", "cycles"],
+      "properties": {
+        "modules": { "type": "integer", "minimum": 0 },
+        "dependencyEdges": { "type": "integer", "minimum": 0 },
+        "averageDependencies": { "type": "number", "minimum": 0 },
+        "maximumDependencyDepth": { "type": "integer", "minimum": 0 },
+        "cycles": { "type": "array", "items": { "$ref": "#/$defs/stringArray" } }
+      }
+    },
+    "directModuleDependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/moduleDependency" }
+    },
+    "directLibraryDeclarations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/libraryDeclaration" }
+    },
+    "modules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/module" }
+    },
+    "libraries": {
+      "type": "object",
+      "required": ["directDeclarations", "versionConflicts", "libraries"],
+      "properties": {
+        "directDeclarations": { "type": "integer", "minimum": 0 },
+        "versionConflicts": { "$ref": "#/$defs/stringArray" },
+        "libraries": { "type": "array", "items": { "$ref": "#/$defs/library" } }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": ["findings"],
+      "properties": {
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": { "type": "array", "items": { "type": "string" } },
+    "moduleDependency": {
+      "type": "object",
+      "required": ["from", "to", "configuration", "scope"],
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "configuration": { "type": "string" },
+        "scope": { "type": "string" }
+      }
+    },
+    "libraryDeclaration": {
+      "type": "object",
+      "required": ["module", "identifier", "declaredVersion", "configuration", "scope"],
+      "properties": {
+        "module": { "type": "string" },
+        "identifier": { "type": "string" },
+        "declaredVersion": { "type": "string" },
+        "configuration": { "type": "string" },
+        "scope": { "type": "string" }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["path", "directDependencies", "transitiveDependencies", "directDependents", "affectedModules", "libraries", "dependencyDepth", "dependentDepth", "projectCoverage"],
+      "properties": {
+        "path": { "type": "string" },
+        "directDependencies": { "$ref": "#/$defs/stringArray" },
+        "transitiveDependencies": { "$ref": "#/$defs/stringArray" },
+        "directDependents": { "$ref": "#/$defs/stringArray" },
+        "affectedModules": { "$ref": "#/$defs/stringArray" },
+        "libraries": { "$ref": "#/$defs/stringArray" },
+        "dependencyDepth": { "type": "integer", "minimum": 0 },
+        "dependentDepth": { "type": "integer", "minimum": 0 },
+        "projectCoverage": { "type": "number", "minimum": 0 }
+      }
+    },
+    "library": {
+      "type": "object",
+      "required": ["identifier", "declaredVersions", "resolvedVersion", "modules", "directModules"],
+      "properties": {
+        "identifier": { "type": "string" },
+        "declaredVersions": { "$ref": "#/$defs/stringArray" },
+        "resolvedVersion": { "type": ["string", "null"] },
+        "modules": { "$ref": "#/$defs/stringArray" },
+        "directModules": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "severity", "subject", "message", "dependencyPath", "declarations", "references", "suggestedFix"],
+      "properties": {
+        "id": { "type": "string" },
+        "severity": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "dependencyPath": { "$ref": "#/$defs/stringArray" },
+        "declarations": { "$ref": "#/$defs/stringArray" },
+        "references": {
+          "type": "object",
+          "required": ["modules", "libraries", "moduleEdges"],
+          "properties": {
+            "modules": { "$ref": "#/$defs/stringArray" },
+            "libraries": { "$ref": "#/$defs/stringArray" },
+            "moduleEdges": { "type": "array", "items": { "$ref": "#/$defs/moduleEdge" } }
+          }
+        },
+        "suggestedFix": { "type": ["string", "null"] }
+      }
+    },
+    "moduleEdge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" }
+      }
+    }
+  }
+}
