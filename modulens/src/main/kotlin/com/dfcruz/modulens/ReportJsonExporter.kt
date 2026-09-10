@@ -78,7 +78,8 @@ object ReportJsonExporter {
                   .filterValues { coordinates -> entry.identifier in coordinates.map(::libraryIdentifier) }
                   .keys
                   .sorted()
-              "{\"identifier\":${string(entry.identifier)},\"declaredVersions\":${arrays(entry.declaredVersions)},\"resolvedVersion\":${entry.resolvedVersion?.let(::string) ?: "null"},\"modules\":${arrays(modules)}}"
+              val directModules = entry.modules.sorted()
+              "{\"identifier\":${string(entry.identifier)},\"declaredVersions\":${arrays(entry.declaredVersions)},\"resolvedVersion\":${entry.resolvedVersion?.let(::string) ?: "null"},\"modules\":${arrays(modules)},\"directModules\":${arrays(directModules)}}"
           }}]
         }
     """.trimIndent()

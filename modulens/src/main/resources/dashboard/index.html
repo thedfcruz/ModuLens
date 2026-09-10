@@ -9,92 +9,25 @@
   <script defer src="assets/modulens.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="container topbar-content">
-      <a class="brand" href="#overview" aria-label="ModuLens report home">
-        <span class="brand-mark">M</span>
-        <span>ModuLens</span>
-      </a>
-      <nav aria-label="Report sections">
-        <a href="#findings">Findings</a>
-        <a href="#modules">Modules</a>
-        <a href="#libraries">Libraries</a>
-      </nav>
-    </div>
-  </header>
-
+  <header class="topbar"><div class="container topbar-content">
+    <a class="brand" href="#overview" aria-label="ModuLens report home"><span class="brand-mark">M</span><span>ModuLens</span></a>
+    <nav aria-label="Report sections">
+      <button class="tab-link active" type="button" data-tab="findings">Findings</button>
+      <button class="tab-link" type="button" data-tab="modules">Modules</button>
+      <button class="tab-link" type="button" data-tab="libraries">Libraries</button>
+    </nav>
+  </div></header>
   <main class="container">
-    <section id="overview" class="hero">
-      <div>
-        <p class="eyebrow">DEPENDENCY HEALTH</p>
-        <h1>Know what connects your build.</h1>
-        <p>Explore module impact, find dependency issues, and trace every external library back to the modules that use it.</p>
-      </div>
-      <div id="summary" class="summary-grid" aria-label="Project summary"></div>
-    </section>
-
-    <section id="findings" class="section">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">ACTIONABLE</p>
-          <h2>Findings</h2>
-          <p>Issues are shown with the evidence needed to decide and act.</p>
-        </div>
-        <label class="search-field" for="finding-filter">
-          <span>Search findings</span>
-          <input id="finding-filter" type="search" placeholder="Rule, module, library…">
-        </label>
-      </div>
-      <div id="findings-list" class="findings-list"></div>
-    </section>
-
-    <section id="modules" class="section">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">MODULE EXPLORER</p>
-          <h2>Modules and impact</h2>
-          <p>Search or select a module. Its library usage becomes the active filter for the library catalog.</p>
-        </div>
-        <div class="controls">
-          <label class="search-field" for="module-filter">
-            <span>Search modules</span>
-            <input id="module-filter" type="search" placeholder=":feature, :core…">
-          </label>
-          <label class="select-field" for="module-select">
-            <span>Selected module</span>
-            <select id="module-select"></select>
-          </label>
-        </div>
-      </div>
-      <div class="module-layout">
-        <div id="module-list" class="module-list" aria-label="Module list"></div>
-        <article id="module-details" class="module-details" aria-live="polite"></article>
-      </div>
-    </section>
-
-    <section id="libraries" class="section">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">LIBRARY EXPLORER</p>
-          <h2>All resolved external libraries</h2>
-          <p id="library-context">Search a library or select a module to filter the catalog.</p>
-        </div>
-        <div class="controls">
-          <label class="search-field" for="library-filter">
-            <span>Search libraries</span>
-            <input id="library-filter" type="search" placeholder="androidx, kotlinx, group:name…">
-          </label>
-          <button id="clear-module-filter" class="button-secondary" type="button">Show all libraries</button>
-        </div>
-      </div>
-      <div class="library-meta"><span id="library-count"></span><span>Resolved versions reflect Gradle resolution.</span></div>
-      <div class="table-wrapper">
-        <table>
-          <thead><tr><th>Library</th><th>Declared versions</th><th>Resolved</th><th>Used by modules</th></tr></thead>
-          <tbody id="library-list"></tbody>
-        </table>
-      </div>
-    </section>
+    <section id="overview" class="hero"><div><p class="eyebrow">DEPENDENCY HEALTH</p><h1>Know what connects your build.</h1><p>Explore module impact, investigate findings, and trace external libraries to the modules that use them.</p></div><div id="summary" class="summary-grid" aria-label="Project summary"></div></section>
+    <div class="tabs" role="tablist" aria-label="Analysis views">
+      <button class="tab active" role="tab" aria-selected="true" type="button" data-tab="findings">Findings <span id="findings-tab-count"></span></button>
+      <button class="tab" role="tab" aria-selected="false" type="button" data-tab="modules">Modules <span id="modules-tab-count"></span></button>
+      <button class="tab" role="tab" aria-selected="false" type="button" data-tab="libraries">Libraries <span id="libraries-tab-count"></span></button>
+    </div>
+    <section id="findings" class="section tab-panel active" role="tabpanel"><div class="section-heading"><div><p class="eyebrow">ACTIONABLE</p><h2>Findings</h2><p>Filter findings by rule or severity, then open the related module for context.</p></div><div class="controls filters"><label class="select-field" for="finding-type"><span>Finding type</span><select id="finding-type"></select></label><label class="select-field" for="finding-severity"><span>Severity</span><select id="finding-severity"></select></label></div></div><div id="findings-list" class="findings-list"></div></section>
+    <section id="modules" class="section tab-panel" role="tabpanel" hidden><div class="section-heading"><div><p class="eyebrow">MODULE EXPLORER</p><h2>Modules and impact</h2><p>Choose a module to understand its connections, library closure, and related findings.</p></div><label class="search-field" for="module-filter"><span>Search modules</span><input id="module-filter" type="search" placeholder=":feature, :core…"></label></div><div id="selected-module" class="selection-bar" hidden></div><div class="module-layout"><div id="module-list" class="module-list" aria-label="Module list"></div><article id="module-details" class="module-details" aria-live="polite"></article></div></section>
+    <section id="libraries" class="section tab-panel" role="tabpanel" hidden><div class="section-heading"><div><p class="eyebrow">LIBRARY EXPLORER</p><h2>Resolved external libraries</h2><p>Find a library, inspect version status, and see the modules that use it.</p></div><label class="search-field" for="library-filter"><span>Search libraries</span><input id="library-filter" type="search" placeholder="androidx, kotlinx, group:name…"></label></div><div class="library-meta"><span id="library-count"></span><button id="clear-library-filter" class="text-button" type="button" hidden>Clear search</button></div><div id="library-list" class="library-list"></div></section>
   </main>
+  <dialog id="library-modules-dialog" class="modules-dialog"><div class="dialog-heading"><div><p class="eyebrow">LIBRARY USAGE</p><h2 id="dialog-library-name"></h2></div><button id="close-library-dialog" class="icon-button" type="button" aria-label="Close">×</button></div><label class="search-field" for="library-module-filter"><span>Search modules</span><input id="library-module-filter" type="search" placeholder=":feature, :core…"></label><div id="dialog-module-list" class="dialog-module-list"></div></dialog>
 </body>
 </html>
