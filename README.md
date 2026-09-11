@@ -16,13 +16,7 @@ It is deliberately focused on dependency health: it explains structural problems
 
 ### Maven Central
 
-The first Maven Central release is configured as version `1.0.0` with the plugin ID `com.dfcruz.modulens`. Once it is published, apply it in the root `build.gradle.kts`:
-
-```kotlin
-plugins {
-    id("com.dfcruz.modulens") version "1.0.0"
-}
-```
+Maven Central publication is being prepared. The plugin ID is `com.dfcruz.modulens`; the released version and installation snippet will be documented with the first release.
 
 ### Development from this repository
 
@@ -132,6 +126,7 @@ moduLens {
         minimumFindingSeverity.set(FindingSeverity.ERROR)
         includeResolvedLibraries.set(false)
         includeTransitiveModuleRelationships.set(false)
+        // Requires includeResolvedLibraries to also be true.
         includeLibraryUsageModules.set(false)
         // Glob patterns matched against group:name and group:name:version.
         ignoredLibraryPatterns.addAll("androidx.*", "com.android.tools.*")
@@ -201,10 +196,21 @@ Reports are generated under the root project's `build/reports/modulens` director
 Open `build/reports/modulens/html/index.html` in a browser. The dashboard works without a network connection and includes:
 
 - A searchable module explorer with dependencies, dependents, impact, and resolved libraries.
-- A searchable catalog of all resolved external libraries.
-- Automatic library filtering when a module is selected.
-- Module links on each library, so you can navigate from a library to every module that uses it.
+- A searchable library explorer with usage-source and version-status filters, plus ordering by name, consumers, change impact, or conflict status.
+- Library details with direct declarations, Gradle configurations and scopes, direct and transitive consumers, version resolution, and calculated change impact.
+- Links between libraries and module details, so related modules can be opened directly from a library's declaration or consumer lists.
 - Filterable findings with dependency paths and suggested fixes.
+
+The dashboard can always show direct declarations. To explore resolved and transitive library consumers, enable both resolved module libraries and reverse usage in the report data:
+
+```kotlin
+moduLens {
+    report {
+        includeResolvedLibraries.set(true)
+        includeLibraryUsageModules.set(true)
+    }
+}
+```
 
 ### Full JSON report for automation and AI review
 
@@ -214,7 +220,7 @@ Run the aggregate report directly when a tool needs the complete project context
 ./gradlew moduLensReport
 ```
 
-It writes `build/reports/modulens/report.json`. By default, this is a compact, AI-friendly report: project summary, direct module and library declarations, direct module relationships, and findings. Resolved library closures, transitive module relationships, and reverse library usage are opt-in through `report` configuration because they grow rapidly in large projects. Library glob patterns can remove known injected or irrelevant dependency families from the JSON report.
+It writes `build/reports/modulens/report.json`. By default, this is a compact, AI-friendly report: project summary, direct module and library declarations, direct module relationships, and findings. Resolved library closures and transitive module relationships are opt-in through `report` configuration because they grow rapidly in large projects. Reverse library usage additionally requires `includeResolvedLibraries.set(true)`, because it is derived from the resolved module-library data. Library glob patterns can remove known injected or irrelevant dependency families from the JSON report.
 
 The report contract is documented in [the JSON Schema](docs/modulens-full-report.schema.json). `schemaVersion` follows a compatibility policy: additive fields remain in the current version; incompatible field changes require a new version. Findings include explicit module, library, and module-edge references so tools do not need to parse human-readable messages.
 
