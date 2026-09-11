@@ -32,9 +32,13 @@ data class ReportAnalysisSnapshot(
 object ReportAnalysisSnapshotBuilder {
     fun build(input: ReportAnalysisInput): ReportAnalysisSnapshot {
         val graph = ModuleGraph(input.graph)
+        val options = input.metadata.options
+        val filteredDeclarations = input.libraryDeclarations.mapValues { (_, libraries) ->
+            libraries.filter(options::includesLibrary)
+        }
         val libraries = LibraryInventoryAnalyzer.analyze(
-            declarations = input.libraryDeclarations,
-            resolvedLibraries = input.resolvedLibraries,
+            declarations = filteredDeclarations,
+            resolvedLibraries = input.resolvedLibraries.filter(options::includesLibrary),
         )
         return ReportAnalysisSnapshot(
             graph = graph,
@@ -42,11 +46,13 @@ object ReportAnalysisSnapshotBuilder {
             libraries = libraries,
             findings = ProjectFindingsAnalyzer.analyze(FindingAnalysisSnapshot(graph, libraries)),
             moduleLibraries = input.moduleLibraries.mapValues { (_, libraries) ->
-                libraries.distinct().sorted()
+                libraries.filter(options::includesLibrary).distinct().sorted()
             },
             metadata = input.metadata,
             directModuleDependencies = input.directModuleDependencies,
-            directLibraryDeclarations = input.directLibraryDeclarations,
+            directLibraryDeclarations = input.directLibraryDeclarations.filter { declaration ->
+                options.includesLibrary("${declaration.identifier}:${declaration.declaredVersion}")
+            },
         )
     }
 }

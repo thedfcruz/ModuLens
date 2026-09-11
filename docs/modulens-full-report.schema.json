@@ -20,7 +20,7 @@
     "reportType": { "const": "modulens-full-report" },
     "metadata": {
       "type": "object",
-      "required": ["pluginId", "gradleVersion", "includedScopes", "excludedModules", "externalLibraryResolution"],
+      "required": ["pluginId", "gradleVersion", "includedScopes", "excludedModules", "externalLibraryResolution", "options"],
       "properties": {
         "pluginId": { "type": "string" },
         "gradleVersion": { "type": "string" },
@@ -32,6 +32,17 @@
           "properties": {
             "enabled": { "type": "boolean" },
             "status": { "enum": ["completed", "skipped"] }
+          }
+        },
+        "options": {
+          "type": "object",
+          "required": ["minimumFindingSeverity", "includeResolvedLibraries", "includeTransitiveModuleRelationships", "includeLibraryUsageModules", "ignoredLibraryPatterns"],
+          "properties": {
+            "minimumFindingSeverity": { "enum": ["ERROR", "WARNING"] },
+            "includeResolvedLibraries": { "type": "boolean" },
+            "includeTransitiveModuleRelationships": { "type": "boolean" },
+            "includeLibraryUsageModules": { "type": "boolean" },
+            "ignoredLibraryPatterns": { "$ref": "#/$defs/stringArray" }
           }
         }
       }

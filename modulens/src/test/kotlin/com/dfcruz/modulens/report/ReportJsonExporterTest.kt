@@ -64,4 +64,40 @@ class ReportJsonExporterTest {
         assertTrue(finding.getValue("references").jsonObject.getValue("modules").jsonArray.isNotEmpty())
         assertTrue(ReportJsonExporter.fullReport(snapshot).contains("\n    \"metadata\""))
     }
+
+    @Test
+    fun `omits expensive report sections and warnings when configured`() {
+        val snapshot = ReportAnalysisSnapshotBuilder.build(
+            ReportAnalysisInput(
+                graph = mapOf(
+                    ":app" to listOf(":feature", ":domain"),
+                    ":feature" to listOf(":domain"),
+                    ":domain" to emptyList(),
+                ),
+                libraryDeclarations = emptyMap(),
+                resolvedLibraries = emptyList(),
+                moduleLibraries = mapOf(":app" to listOf("com.example:library:1.0")),
+                metadata = ReportMetadata(
+                    pluginId = "com.dfcruz.modulens",
+                    gradleVersion = "9.5",
+                    includedScopes = listOf("production"),
+                    excludedModules = emptyList(),
+                    externalLibraryResolutionEnabled = false,
+                    options = ReportOptions(minimumFindingSeverity = FindingSeverity.ERROR),
+                ),
+                directModuleDependencies = emptyList(),
+                directLibraryDeclarations = emptyList(),
+            ),
+        )
+
+        val report = Json.parseToJsonElement(ReportJsonExporter.fullReport(snapshot)).jsonObject
+        val app = report.getValue("modules").jsonArray
+            .first { it.jsonObject.getValue("path").jsonPrimitive.content == ":app" }
+            .jsonObject
+
+        assertTrue(app.getValue("transitiveDependencies").jsonArray.isEmpty())
+        assertTrue(app.getValue("affectedModules").jsonArray.isEmpty())
+        assertTrue(app.getValue("libraries").jsonArray.isEmpty())
+        assertTrue(report.getValue("findings").jsonObject.getValue("findings").jsonArray.isEmpty())
+    }
 }

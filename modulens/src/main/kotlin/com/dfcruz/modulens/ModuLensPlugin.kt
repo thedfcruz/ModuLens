@@ -147,6 +147,7 @@ class ModuLensPlugin : Plugin<Project> {
                 this.libraryDeclarations.set(declaredLibraries)
                 this.resolvedLibraries.set(resolvedLibraries)
                 this.moduleLibraries.set(project.provider {
+                    if (!extension.report.includeResolvedLibraries.get()) return@provider emptyMap()
                     graph.keys.associateWith { module ->
                         val libraryCoordinates = projectDependencyGraph
                             .libraryCoordinatesUsedBy(module, selectedScopes)
@@ -173,6 +174,11 @@ class ModuLensPlugin : Plugin<Project> {
                 this.includedScopes.set(selectedScopes.map(DependencyScope::optionName).sorted())
                 this.excludedModules.set(extension.excludedModules.map { it.sorted().toList() })
                 this.externalLibraryResolutionEnabled.set(extension.analysis.resolveExternalLibraries)
+                this.minimumFindingSeverity.set(extension.report.minimumFindingSeverity)
+                this.includeResolvedLibraries.set(extension.report.includeResolvedLibraries)
+                this.includeTransitiveModuleRelationships.set(extension.report.includeTransitiveModuleRelationships)
+                this.includeLibraryUsageModules.set(extension.report.includeLibraryUsageModules)
+                this.ignoredLibraryPatterns.set(extension.report.ignoredLibraryPatterns.map { it.sorted() })
                 this.outputFile.set(project.layout.buildDirectory.file("reports/modulens/report.json"))
             }
 

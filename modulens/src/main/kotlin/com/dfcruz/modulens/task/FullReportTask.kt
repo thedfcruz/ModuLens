@@ -6,6 +6,8 @@ import com.dfcruz.modulens.report.ReportAnalysisSnapshotBuilder
 import com.dfcruz.modulens.report.ReportFileWriter
 import com.dfcruz.modulens.report.ReportJsonExporter
 import com.dfcruz.modulens.report.ReportMetadata
+import com.dfcruz.modulens.report.ReportOptions
+import com.dfcruz.modulens.analysis.FindingSeverity
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
@@ -48,6 +50,21 @@ abstract class FullReportTask : DefaultTask() {
     @get:Input
     abstract val externalLibraryResolutionEnabled: org.gradle.api.provider.Property<Boolean>
 
+    @get:Input
+    abstract val minimumFindingSeverity: org.gradle.api.provider.Property<FindingSeverity>
+
+    @get:Input
+    abstract val includeResolvedLibraries: org.gradle.api.provider.Property<Boolean>
+
+    @get:Input
+    abstract val includeTransitiveModuleRelationships: org.gradle.api.provider.Property<Boolean>
+
+    @get:Input
+    abstract val includeLibraryUsageModules: org.gradle.api.provider.Property<Boolean>
+
+    @get:Input
+    abstract val ignoredLibraryPatterns: ListProperty<String>
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -65,6 +82,13 @@ abstract class FullReportTask : DefaultTask() {
                     includedScopes = includedScopes.get(),
                     excludedModules = excludedModules.get(),
                     externalLibraryResolutionEnabled = externalLibraryResolutionEnabled.get(),
+                    options = ReportOptions(
+                        minimumFindingSeverity = minimumFindingSeverity.get(),
+                        includeResolvedLibraries = includeResolvedLibraries.get(),
+                        includeTransitiveModuleRelationships = includeTransitiveModuleRelationships.get(),
+                        includeLibraryUsageModules = includeLibraryUsageModules.get(),
+                        ignoredLibraryPatterns = ignoredLibraryPatterns.get().toSet(),
+                    ),
                 ),
                 directModuleDependencies = moduleDependencyDeclarations.get()
                     .map(TaskInputCodec::moduleDependency),

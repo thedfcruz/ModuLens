@@ -105,6 +105,7 @@ Local analysis marks cycles as errors and the other current findings as warnings
 
 ```kotlin
 import com.dfcruz.modulens.DependencyScope
+import com.dfcruz.modulens.analysis.FindingSeverity
 
 moduLens {
     // Production is the default scope.
@@ -124,6 +125,16 @@ moduLens {
         exportText.set(true)
         // Generates the HTML dashboard after local analysis tasks.
         exportHtml.set(true)
+    }
+
+    report {
+        // The JSON report defaults to compact, direct-declaration data for AI review.
+        minimumFindingSeverity.set(FindingSeverity.ERROR)
+        includeResolvedLibraries.set(false)
+        includeTransitiveModuleRelationships.set(false)
+        includeLibraryUsageModules.set(false)
+        // Glob patterns matched against group:name and group:name:version.
+        ignoredLibraryPatterns.addAll("androidx.*", "com.android.tools.*")
     }
 
     verification {
@@ -203,7 +214,7 @@ Run the aggregate report directly when a tool needs the complete project context
 ./gradlew moduLensReport
 ```
 
-It writes `build/reports/modulens/report.json`. This is the only JSON export: it contains a versioned schema, analysis metadata, project summary, every module's graph relationships and resolved libraries, direct module and library declarations with Gradle configuration and scope, and all findings.
+It writes `build/reports/modulens/report.json`. By default, this is a compact, AI-friendly report: project summary, direct module and library declarations, direct module relationships, and findings. Resolved library closures, transitive module relationships, and reverse library usage are opt-in through `report` configuration because they grow rapidly in large projects. Library glob patterns can remove known injected or irrelevant dependency families from the JSON report.
 
 The report contract is documented in [the JSON Schema](docs/modulens-full-report.schema.json). `schemaVersion` follows a compatibility policy: additive fields remain in the current version; incompatible field changes require a new version. Findings include explicit module, library, and module-edge references so tools do not need to parse human-readable messages.
 
