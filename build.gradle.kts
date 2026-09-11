@@ -18,6 +18,12 @@ moduLens {
         exportHtml.set(true)
     }
 
+    // Keep the sample dashboard fully explorable. Real projects can keep these compact by default.
+    report {
+        includeResolvedLibraries.set(true)
+        includeLibraryUsageModules.set(true)
+    }
+
     verification {
         failOnCycles.set(true)
         failOnVersionConflicts.set(true)

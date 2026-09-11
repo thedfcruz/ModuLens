@@ -112,37 +112,64 @@
 <div>
 <p class="eyebrow">LIBRARY EXPLORER</p>
 <h2>Resolved external libraries</h2>
-<p>Find a library, inspect version status, and see the modules that use it.</p>
+<p>Prioritise library risk, trace direct declarations, and understand the modules exposed to a change.</p>
 </div>
+<div class="controls">
 <label class="search-field" for="library-filter">
 <span>Search libraries</span>
 <input id="library-filter" type="search" placeholder="androidx, kotlinx, group:name…">
 </label>
+<label class="select-field" for="library-source-filter">
+<span>Usage source</span>
+<select id="library-source-filter">
+<option value="ALL">All libraries</option>
+<option value="DIRECT">Direct declarations</option>
+<option value="MIXED">Direct and transitive</option>
+<option value="TRANSITIVE">Transitive only</option>
+</select>
+</label>
+<label class="select-field" for="library-conflict-filter">
+<span>Version status</span>
+<select id="library-conflict-filter">
+<option value="ALL">All versions</option>
+<option value="CONFLICT">Conflicts only</option>
+<option value="ALIGNED">Aligned only</option>
+</select>
+</label>
 </div>
+</div>
+<div class="library-toolbar">
 <div class="library-meta">
 <span id="library-count">
 </span>
 <button id="clear-library-filter" class="text-button" type="button" hidden>Clear search</button>
 </div>
-<div id="library-list" class="library-list">
+<div class="controls library-sort-controls">
+<label class="select-field" for="library-sort">
+<span>Order libraries by</span>
+<select id="library-sort">
+<option value="NAME">Name (A–Z)</option>
+<option value="TOTAL_CONSUMERS">Total consumers</option>
+<option value="CHANGE_IMPACT">Change impact</option>
+<option value="CONFLICT">Conflict status</option>
+</select>
+</label>
+<label class="select-field" for="library-sort-direction">
+<span>Direction</span>
+<select id="library-sort-direction">
+<option value="ASC">Ascending</option>
+<option value="DESC">Descending</option>
+</select>
+</label>
+</div>
+</div>
+<div class="library-layout">
+<div id="library-list" class="library-list" aria-label="Library list">
+</div>
+<article id="library-details" class="library-details" aria-live="polite">
+</article>
 </div>
 </section>
   </main>
-  <dialog id="library-modules-dialog" class="modules-dialog">
-<div class="dialog-heading">
-<div>
-<p class="eyebrow">LIBRARY USAGE</p>
-<h2 id="dialog-library-name">
-</h2>
-</div>
-<button id="close-library-dialog" class="icon-button" type="button" aria-label="Close">×</button>
-</div>
-<label class="search-field" for="library-module-filter">
-<span>Search modules</span>
-<input id="library-module-filter" type="search" placeholder=":feature, :core…">
-</label>
-<div id="dialog-module-list" class="dialog-module-list">
-</div>
-</dialog>
 </body>
 </html>

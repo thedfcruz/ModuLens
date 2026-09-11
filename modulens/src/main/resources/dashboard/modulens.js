@@ -7,7 +7,7 @@
     counts[declaration.module] = (counts[declaration.module] ?? 0) + 1;
     return counts;
   }, {});
-  const state = { tab: "findings", selectedModule: null, moduleQuery: "", moduleSort: "NAME", moduleSortDirection: "ASC", libraryQuery: "", libraryModuleQuery: "", findingType: "ALL", findingSeverity: "ALL", selectedLibrary: null };
+  const state = { tab: "findings", selectedModule: null, moduleQuery: "", moduleSort: "NAME", moduleSortDirection: "ASC", libraryQuery: "", librarySource: "ALL", libraryConflict: "ALL", librarySort: "NAME", librarySortDirection: "ASC", findingType: "ALL", findingSeverity: "ALL", selectedLibrary: null };
   const $ = (id) => document.getElementById(id);
   const escape = (value) => String(value).replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" })[c]);
   const module = (path) => modules.find((item) => item.path === path);
@@ -19,6 +19,43 @@
   const relatedModules = (finding) => finding.references?.modules?.length
     ? finding.references.modules
     : modules.filter((item) => [finding.subject, finding.message, ...finding.dependencyPath, ...finding.declarations].some((value) => value.includes(item.path))).map((item) => item.path);
+  const directLibraryDeclarations = data.directLibraryDeclarations ?? [];
+  const libraryDeclarations = (id) => directLibraryDeclarations
+    .filter((item) => item.identifier === id)
+    .sort((left, right) => left.module.localeCompare(right.module) || left.configuration.localeCompare(right.configuration));
+  const directConsumers = (id) => [...new Set(libraryDeclarations(id).map((item) => item.module))].sort();
+  const reverseDependencies = modules.reduce((result, item) => {
+    item.directDependencies.forEach((dependency) => (result[dependency] ??= []).push(item.path));
+    return result;
+  }, {});
+  const consumersOfModules = (paths) => {
+    const consumers = new Set(paths);
+    const pending = [...paths];
+    while (pending.length) {
+      (reverseDependencies[pending.pop()] ?? []).forEach((consumer) => {
+        if (!consumers.has(consumer)) { consumers.add(consumer); pending.push(consumer); }
+      });
+    }
+    return [...consumers].sort();
+  };
+  const libraryFacts = (item) => {
+    const declarations = libraryDeclarations(item.identifier);
+    const direct = directConsumers(item.identifier);
+    const resolved = [...new Set(item.modules ?? [])].sort();
+    const usageKnown = data.metadata.options.includeLibraryUsageModules;
+    const transitive = usageKnown ? resolved.filter((path) => !direct.includes(path)) : [];
+    const totalConsumers = usageKnown ? resolved.length : direct.length;
+    const hasDirect = direct.length > 0;
+    const hasTransitive = transitive.length > 0;
+    const source = hasDirect && hasTransitive ? "MIXED" : hasDirect ? "DIRECT" : hasTransitive ? "TRANSITIVE" : "UNKNOWN";
+    return { declarations, direct, resolved, transitive, usageKnown, totalConsumers, impact: consumersOfModules(direct), source, scopes: [...new Set(declarations.map((item) => item.scope.toUpperCase()))] };
+  };
+  const librarySourceLabel = (source) => ({
+    DIRECT: "Direct declaration",
+    MIXED: "Direct + transitive",
+    TRANSITIVE: "Transitive only",
+    UNKNOWN: "Resolved library",
+  })[source];
 
   const summary = [[data.project.modules, "Modules"], [data.project.dependencyEdges, "Dependency edges"], [data.project.maximumDependencyDepth, "Maximum depth"], [findings.length, "Findings"], [findings.filter((item) => item.severity === "ERROR").length, "Errors"], [data.libraries.versionConflicts.length, "Version conflicts"]];
   $("summary").innerHTML = summary.map(([value, name], index) => `<article class="summary-card ${index === 3 ? "emphasis" : ""}"><span>${name}</span><strong>${value}</strong></article>`).join("");
@@ -80,6 +117,54 @@
     }).join("") : empty("No libraries match this search.");
   };
 
+  const renderLibraryWorkspace = () => {
+    const hasConflict = (item) => data.libraries.versionConflicts.includes(item.identifier);
+    const metric = (item, facts) => ({
+      TOTAL_CONSUMERS: facts.totalConsumers,
+      CHANGE_IMPACT: facts.impact.length,
+      CONFLICT: hasConflict(item) ? 1 : 0,
+    })[state.librarySort];
+    const visible = libraries.map((item) => ({ item, facts: libraryFacts(item) }))
+      .filter(({ item, facts }) =>
+        [item.identifier, item.resolvedVersion || "", ...item.declaredVersions].join(" ").toLowerCase().includes(state.libraryQuery.toLowerCase())
+        && (state.librarySource === "ALL" || facts.source === state.librarySource)
+        && (state.libraryConflict === "ALL" || (state.libraryConflict === "CONFLICT") === hasConflict(item))
+      )
+      .sort((left, right) => {
+        const direction = state.librarySortDirection === "ASC" ? 1 : -1;
+        const comparison = state.librarySort === "NAME"
+          ? left.item.identifier.localeCompare(right.item.identifier)
+          : metric(left.item, left.facts) - metric(right.item, right.facts) || left.item.identifier.localeCompare(right.item.identifier);
+        return comparison * direction;
+      });
+    $("library-count").textContent = visible.length + " of " + libraries.length + " resolved libraries";
+    $("clear-library-filter").hidden = !state.libraryQuery;
+    $("library-list").innerHTML = visible.length ? visible.map(({ item, facts }) => {
+      const conflict = hasConflict(item);
+      return '<button class="library-row ' + (item.identifier === state.selectedLibrary ? "active " : "") + (conflict ? "has-conflict" : "") + '" type="button" data-library="' + escape(item.identifier) + '"><div class="library-row-heading"><strong>' + escape(item.identifier) + '</strong><span class="status ' + (conflict ? "conflict" : "") + '">' + (conflict ? "Conflict" : "Aligned") + '</span></div><span class="library-version">Resolved ' + escape(item.resolvedVersion || "version unavailable") + '</span><div class="library-preview"><span>' + facts.declarations.length + ' direct declarations</span><span>' + facts.totalConsumers + ' consumers</span><span>' + facts.impact.length + ' change impact</span><span>' + librarySourceLabel(facts.source) + "</span></div></button>";
+    }).join("") : empty("No libraries match these filters.");
+    const selected = library(state.selectedLibrary);
+    if (!selected) {
+      $("library-details").innerHTML = '<div class="details-placeholder"><h3>Select a library</h3><p>Choose a library to trace declarations, consumers, versions, and change impact.</p></div>';
+      return;
+    }
+    const facts = libraryFacts(selected);
+    const conflict = hasConflict(selected);
+    const declarations = facts.declarations.length
+      ? '<div class="declaration-list">' + facts.declarations.map((item) => '<div class="declaration-row">' + moduleLink(item.module) + "<span>" + escape(item.configuration) + "</span><span>" + escape(item.scope) + "</span><code>" + escape(item.declaredVersion) + "</code></div>").join("") + "</div>"
+      : empty("No direct declaration was found in the analysed modules.");
+    const list = (title, items, message, count) => '<section class="detail-section"><h3>' + title + "<span>" + (count ?? items.length) + "</span></h3>" + entityList(items, "module", message) + "</section>";
+    const resolved = facts.usageKnown
+      ? list("Resolved consumers " + help("Modules where Gradle resolved this library, whether they declare it directly or receive it transitively."), facts.resolved, "No module resolved this library.", facts.totalConsumers)
+      : list("Resolved consumers " + help("This relationship list was omitted to keep the JSON report compact. Enable includeLibraryUsageModules to include it."), [], "Resolved module usage is not included in this report.", facts.totalConsumers);
+    const relatedFindings = findings.filter((item) => item.references?.libraries?.includes(selected.identifier));
+    const findingsMarkup = relatedFindings.length
+      ? '<div class="module-finding-list">' + relatedFindings.map((item) => '<div><span class="badge ' + item.severity.toLowerCase() + '">' + escape(item.severity) + "</span><strong>" + escape(label(item.id)) + "</strong><p>" + escape(item.message) + "</p></div>").join("") + "</div>"
+      : empty("No findings are associated with this library.");
+    $("library-details").innerHTML = '<div class="details-title"><div><p class="eyebrow">SELECTED LIBRARY</p><h2><code>' + escape(selected.identifier) + '</code></h2></div><div class="library-status-summary"><span class="status ' + (conflict ? "conflict" : "") + '">' + (conflict ? "Version conflict" : "Aligned") + "</span><p>" + librarySourceLabel(facts.source) + '</p></div></div><div class="library-detail-facts"><div><span>Direct declarations</span><strong>' + facts.declarations.length + '</strong></div><div><span>Total consumers</span><strong>' + facts.totalConsumers + '</strong></div><div><span>Change impact</span><strong>' + facts.impact.length + "</strong>" + help("Modules that directly declare this library, plus modules that directly or indirectly depend on them.") + '</div><div><span>Versions detected</span><strong>' + selected.declaredVersions.length + "</strong></div></div><section class=\"detail-section\"><h3>Direct declarations <span>" + facts.declarations.length + "</span></h3>" + declarations + '</section><div class="detail-grid">' + list("Direct declarer modules " + help("Modules with an explicit dependency declaration for this library."), facts.direct, "No direct declarer modules.") + list("Transitive consumers " + help("Modules that resolve this library without directly declaring it."), facts.transitive, facts.usageKnown ? "No transitive consumers." : "Transitive usage is not included in this report.", facts.usageKnown ? facts.transitive.length : 0) + list("Change impact " + help("Modules potentially affected when a direct declaration of this library changes."), facts.impact, "No modules are exposed through direct declarations.") + resolved + '</div><section class="detail-section"><h3>Version resolution <span>' + selected.declaredVersions.length + '</span></h3><div class="version-resolution"><div><span>Requested versions</span><strong>' + escape(selected.declaredVersions.length ? selected.declaredVersions.join(", ") : "No direct version request") + '</strong></div><div><span>Resolved version</span><strong>' + escape(selected.resolvedVersion || "Unavailable") + "</strong></div></div></section><section class=\"detail-section\"><h3>Related findings <span>" + relatedFindings.length + "</span></h3>" + findingsMarkup + "</section>";
+    $("library-details").lastElementChild?.remove();
+  };
+
   const renderLibraryDialog = () => {
     const selected = library(state.selectedLibrary);
     if (!selected) return;
@@ -87,30 +172,29 @@
     $("dialog-library-name").textContent = selected.identifier;
     $("dialog-module-list").innerHTML = visible.length ? visible.map((path) => `<button class="dialog-module" type="button" data-module="${escape(path)}"><code>${escape(path)}</code><span>${selected.directModules.includes(path) ? "Direct declaration" : "Transitive resolution"}</span></button>`).join("") : empty("No modules match this search.");
   };
-  const selectModule = (path) => { state.selectedModule = path; state.moduleQuery = ""; $("module-filter").value = ""; if ($("library-modules-dialog").open) $("library-modules-dialog").close(); renderModules(); setTab("modules"); };
-  const openLibrary = (id) => { state.selectedLibrary = id; setTab("libraries"); document.querySelector(`[data-library="${CSS.escape(id)}"]`)?.closest(".library-card")?.scrollIntoView({ behavior: "smooth", block: "center" }); };
-  const openLibraryUsers = (id) => { state.selectedLibrary = id; state.libraryModuleQuery = ""; $("library-module-filter").value = ""; renderLibraryDialog(); $("library-modules-dialog").showModal(); };
+  const selectModule = (path) => { state.selectedModule = path; state.moduleQuery = ""; $("module-filter").value = ""; renderModules(); setTab("modules"); };
+  const openLibrary = (id) => { state.selectedLibrary = id; renderLibraryWorkspace(); setTab("libraries"); };
 
   document.addEventListener("click", (event) => {
     const tab = event.target.closest("[data-tab]"); if (tab) setTab(tab.dataset.tab);
     const moduleTarget = event.target.closest("[data-module]"); if (moduleTarget) selectModule(moduleTarget.dataset.module);
     const libraryTarget = event.target.closest("[data-library]"); if (libraryTarget) openLibrary(libraryTarget.dataset.library);
-    const usersTarget = event.target.closest("[data-library-users]"); if (usersTarget) openLibraryUsers(usersTarget.dataset.libraryUsers);
   });
   $("finding-type").addEventListener("change", (event) => { state.findingType = event.target.value; renderFindings(); });
   $("finding-severity").addEventListener("change", (event) => { state.findingSeverity = event.target.value; renderFindings(); });
   $("module-filter").addEventListener("input", (event) => { state.moduleQuery = event.target.value; state.selectedModule = null; renderModules(); });
   $("module-sort").addEventListener("change", (event) => { state.moduleSort = event.target.value; renderModules(); });
   $("module-sort-direction").addEventListener("change", (event) => { state.moduleSortDirection = event.target.value; renderModules(); });
-  $("library-filter").addEventListener("input", (event) => { state.libraryQuery = event.target.value; renderLibraries(); });
-  $("clear-library-filter").addEventListener("click", () => { state.libraryQuery = ""; $("library-filter").value = ""; renderLibraries(); });
-  $("library-module-filter").addEventListener("input", (event) => { state.libraryModuleQuery = event.target.value; renderLibraryDialog(); });
-  $("close-library-dialog").addEventListener("click", () => $("library-modules-dialog").close());
-  $("library-modules-dialog").addEventListener("click", (event) => { if (event.target === $("library-modules-dialog")) $("library-modules-dialog").close(); });
+  $("library-filter").addEventListener("input", (event) => { state.libraryQuery = event.target.value; renderLibraryWorkspace(); });
+  $("clear-library-filter").addEventListener("click", () => { state.libraryQuery = ""; $("library-filter").value = ""; renderLibraryWorkspace(); });
+  $("library-source-filter").addEventListener("change", (event) => { state.librarySource = event.target.value; renderLibraryWorkspace(); });
+  $("library-conflict-filter").addEventListener("change", (event) => { state.libraryConflict = event.target.value; renderLibraryWorkspace(); });
+  $("library-sort").addEventListener("change", (event) => { state.librarySort = event.target.value; renderLibraryWorkspace(); });
+  $("library-sort-direction").addEventListener("change", (event) => { state.librarySortDirection = event.target.value; renderLibraryWorkspace(); });
 
   const types = [...new Set(findings.map((item) => item.id))].sort();
   const severities = [...new Set(findings.map((item) => item.severity))].sort();
   $("finding-type").innerHTML = `<option value="ALL">All finding types</option>${types.map((type) => `<option value="${escape(type)}">${escape(label(type))}</option>`).join("")}`;
   $("finding-severity").innerHTML = `<option value="ALL">All severities</option>${severities.map((severity) => `<option value="${escape(severity)}">${escape(label(severity))}</option>`).join("")}`;
-  renderFindings(); renderModules(); renderLibraries();
+  renderFindings(); renderModules(); renderLibraryWorkspace();
 })();
