@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.analysis
 
 data class ProjectGraphAnalysis(
     val totalModules: Int,
@@ -27,23 +27,31 @@ data class FocusModuleAnalysis(
     val projectCoverage: Double,
     val cycles: List<List<String>>,
 ) {
-    val isLeaf: Boolean get() = directDependencies.isEmpty()
-    val isRoot: Boolean get() = directDependents.isEmpty()
-    val isIsolated: Boolean get() = isLeaf && isRoot
+    val isLeaf: Boolean
+        get() = directDependencies.isEmpty()
+    val isRoot: Boolean
+        get() = directDependents.isEmpty()
+    val isIsolated: Boolean
+        get() = isLeaf && isRoot
 }
 
 class ModuleGraph(graph: Map<String, List<String>>) {
 
-    private val adjacency = graph.mapValues { (_, dependencies) -> dependencies.distinct().sorted() }
+    private val adjacency =
+        graph.mapValues { (_, dependencies) -> dependencies.distinct().sorted() }
+
     private val reverseAdjacency by lazy {
         val reversed = adjacency.keys.associateWith { mutableListOf<String>() }.toMutableMap()
         adjacency.forEach { (module, dependencies) ->
-            dependencies.forEach { dependency -> reversed.getOrPut(dependency) { mutableListOf() }.add(module) }
+            dependencies.forEach { dependency ->
+                reversed.getOrPut(dependency) { mutableListOf() }.add(module)
+            }
         }
         reversed.mapValues { (_, dependents) -> dependents.distinct().sorted() }
     }
 
     val modules: Set<String> get() = adjacency.keys
+    val dependenciesByModule: Map<String, List<String>> get() = adjacency
 
     fun directDependencies(module: String): List<String> = adjacency[module].orEmpty()
 
@@ -52,6 +60,18 @@ class ModuleGraph(graph: Map<String, List<String>>) {
     fun transitiveDependencies(module: String): Set<String> = transitive(adjacency, module)
 
     fun transitiveDependents(module: String): Set<String> = transitive(reverseAdjacency, module)
+
+    fun redundantDirectDependencies(module: String): Map<String, List<String>> {
+        val directDependencies = directDependencies(module)
+        return directDependencies
+            .mapNotNull { dependency ->
+                val alternatives = directDependencies
+                    .filterNot { it == dependency }
+                    .filter { alternative -> dependency in transitiveDependencies(alternative) }
+                dependency.takeIf { alternatives.isNotEmpty() }?.let { it to alternatives }
+            }
+            .toMap()
+    }
 
     fun dependencyPath(from: String, to: String): List<String>? {
         if (from !in adjacency || to !in adjacency) return null
@@ -76,7 +96,11 @@ class ModuleGraph(graph: Map<String, List<String>>) {
                 adjacency[module].orEmpty().forEach { dependency ->
                     when (dependency) {
                         start -> cycles.add(path + start)
-                        !in visited if dependency >= start -> visit(dependency, path + dependency, visited + dependency)
+                        !in visited if dependency >= start -> visit(
+                            dependency,
+                            path + dependency,
+                            visited + dependency
+                        )
                     }
                 }
             }
@@ -97,7 +121,9 @@ class ModuleGraph(graph: Map<String, List<String>>) {
             adjacency.keys.maxOfOrNull { dependencyDepth(it) } ?: 0,
             adjacency.count { it.value.isEmpty() },
             reverseAdjacency.count { it.value.isEmpty() },
-            adjacency.keys.count { adjacency.getValue(it).isEmpty() && reverseAdjacency.getValue(it).isEmpty() },
+            adjacency.keys.count {
+                adjacency.getValue(it).isEmpty() && reverseAdjacency.getValue(it).isEmpty()
+            },
             topDependencies.take(5),
             topDependents.take(5),
             topDependencies.firstOrNull(),
@@ -127,7 +153,9 @@ class ModuleGraph(graph: Map<String, List<String>>) {
 
     private fun transitive(source: Map<String, List<String>>, start: String): Set<String> {
         val visited = mutableSetOf<String>()
-        fun visit(module: String) { source[module].orEmpty().forEach { if (visited.add(it)) visit(it) } }
+        fun visit(module: String) {
+            source[module].orEmpty().forEach { if (visited.add(it)) visit(it) }
+        }
         visit(start)
         visited.remove(start)
         return visited
@@ -145,7 +173,12 @@ class ModuleGraph(graph: Map<String, List<String>>) {
         fun visit(module: String, visited: Set<String>): Int {
             if (module in visited) return 0
             val neighbours = source[module].orEmpty()
-            return if (neighbours.isEmpty()) 0 else 1 + neighbours.maxOf { visit(it, visited + module) }
+            return if (neighbours.isEmpty()) 0 else 1 + neighbours.maxOf {
+                visit(
+                    it,
+                    visited + module
+                )
+            }
         }
         return visit(start, emptySet())
     }

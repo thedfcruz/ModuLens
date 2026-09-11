@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.report
 
 import java.io.File
 

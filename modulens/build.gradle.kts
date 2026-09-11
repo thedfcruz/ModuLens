@@ -15,7 +15,7 @@ gradlePlugin {
             id = "com.dfcruz.modulens"
             displayName = "ModuLens"
             description = "Module analysis"
-            implementationClass = "com.dfcruz.modulens.ModuleAnalysePlugin"
+            implementationClass = "com.dfcruz.modulens.ModuLensPlugin"
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.analysis
 
 data class VerificationPolicy(
     val failOnCycles: Boolean,
@@ -21,7 +21,7 @@ object ProjectVerificationEngine {
         policy: VerificationPolicy,
     ): List<VerificationViolation> {
         return ProjectFindingsAnalyzer
-            .analyzeForVerification(AnalysisSnapshot(graph, libraryInventory), policy)
+            .analyzeForVerification(FindingAnalysisSnapshot(graph, libraryInventory), policy)
             .filter { finding -> policy.shouldFail(finding) }
             .map { finding -> VerificationViolation(finding.id.ruleName, finding.message, finding) }
     }
@@ -32,6 +32,6 @@ object ProjectVerificationEngine {
         FindingId.REDUNDANT_MODULE_DEPENDENCY -> failOnRedundantDependencies
         FindingId.MAXIMUM_DEPENDENCY_DEPTH,
         FindingId.MAXIMUM_DIRECT_DEPENDENCIES,
-        -> true
+            -> true
     }
 }

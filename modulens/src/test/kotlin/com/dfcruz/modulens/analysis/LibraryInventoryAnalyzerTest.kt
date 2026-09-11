@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.analysis
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

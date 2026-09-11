@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.analysis
 
 data class LibraryInventoryEntry(
     val identifier: String,
@@ -33,8 +33,14 @@ object LibraryInventoryAnalyzer {
                 val occurrences = declaredOccurrences[identifier].orEmpty()
                 LibraryInventoryEntry(
                     identifier = identifier,
-                    declaredVersions = occurrences.map { it.first.substringAfterLast(":") }.distinct().sorted(),
-                    modules = occurrences.map { it.second }.distinct().sorted(),
+                    declaredVersions = occurrences
+                        .map { it.first.substringAfterLast(":") }
+                        .distinct()
+                        .sorted(),
+                    modules = occurrences
+                        .map { it.second }
+                        .distinct()
+                        .sorted(),
                     resolvedVersion = resolvedVersions[identifier],
                 )
             }

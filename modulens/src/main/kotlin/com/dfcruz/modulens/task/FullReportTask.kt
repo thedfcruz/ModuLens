@@ -1,5 +1,11 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.task
 
+
+import com.dfcruz.modulens.report.ReportAnalysisInput
+import com.dfcruz.modulens.report.ReportAnalysisSnapshotBuilder
+import com.dfcruz.modulens.report.ReportFileWriter
+import com.dfcruz.modulens.report.ReportJsonExporter
+import com.dfcruz.modulens.report.ReportMetadata
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
@@ -8,7 +14,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
-abstract class FullJsonReportTask : DefaultTask() {
+abstract class FullReportTask : DefaultTask() {
     @get:Input
     abstract val graph: MapProperty<String, List<String>>
 
@@ -47,32 +53,28 @@ abstract class FullJsonReportTask : DefaultTask() {
 
     @TaskAction
     fun action() {
-        val moduleGraph = ModuleGraph(graph.get())
-        val libraries = LibraryInventoryAnalyzer.analyze(
-            declarations = libraryDeclarations.get(),
-            resolvedLibraries = resolvedLibraries.get(),
-        )
-        val findings = ProjectFindingsAnalyzer.analyze(AnalysisSnapshot(moduleGraph, libraries))
-        ReportFileWriter.write(
-            outputFile.get().asFile,
-            ReportJsonExporter.fullReport(
-                graph = moduleGraph,
-                project = moduleGraph.analyzeProject(),
-                libraries = libraries,
-                findings = findings,
+        val snapshot = ReportAnalysisSnapshotBuilder.build(
+            ReportAnalysisInput(
+                graph = graph.get(),
+                libraryDeclarations = libraryDeclarations.get(),
+                resolvedLibraries = resolvedLibraries.get(),
                 moduleLibraries = moduleLibraries.get(),
                 metadata = ReportMetadata(
                     pluginId = pluginId.get(),
                     gradleVersion = gradleVersion.get(),
-                    includedScopes = includedScopes.get().sorted(),
-                    excludedModules = excludedModules.get().sorted(),
+                    includedScopes = includedScopes.get(),
+                    excludedModules = excludedModules.get(),
                     externalLibraryResolutionEnabled = externalLibraryResolutionEnabled.get(),
                 ),
                 directModuleDependencies = moduleDependencyDeclarations.get()
-                    .map(ReportContractCodec::moduleDependency),
+                    .map(TaskInputCodec::moduleDependency),
                 directLibraryDeclarations = libraryDependencyDeclarations.get()
-                    .map(ReportContractCodec::libraryDependency),
+                    .map(TaskInputCodec::libraryDependency),
             ),
+        )
+        ReportFileWriter.write(
+            outputFile.get().asFile,
+            ReportJsonExporter.fullReport(snapshot),
         )
         logger.lifecycle("ModuLens full JSON report: ${outputFile.get().asFile}")
     }

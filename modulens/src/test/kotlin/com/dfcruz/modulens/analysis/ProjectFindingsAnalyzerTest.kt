@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.analysis
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -47,7 +47,7 @@ class ProjectFindingsAnalyzerTest {
     private fun snapshot(
         graph: Map<String, List<String>> = mapOf(":app" to emptyList()),
         declarations: Map<String, List<String>> = emptyMap(),
-    ) = AnalysisSnapshot(
+    ) = FindingAnalysisSnapshot(
         graph = ModuleGraph(graph),
         libraryInventory = LibraryInventoryAnalyzer.analyze(declarations, emptyList()),
     )

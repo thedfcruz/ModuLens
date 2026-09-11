@@ -1,5 +1,9 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.task
 
+import com.dfcruz.modulens.analysis.LibraryInventoryAnalyzer
+import com.dfcruz.modulens.analysis.ModuleGraph
+import com.dfcruz.modulens.analysis.ProjectVerificationEngine
+import com.dfcruz.modulens.analysis.VerificationPolicy
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.provider.ListProperty
@@ -8,7 +12,8 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 
-abstract class ModuleVerificationTask : DefaultTask() {
+abstract class VerificationTask : DefaultTask() {
+
     @get:Input
     abstract val graph: MapProperty<String, List<String>>
 
@@ -49,10 +54,12 @@ abstract class ModuleVerificationTask : DefaultTask() {
                 failOnRedundantDependencies.get(),
             ),
         )
+
         if (violations.isEmpty()) {
             logger.lifecycle("ModuLens verification passed.")
             return
         }
+
         throw GradleException(
             buildString {
                 appendLine("ModuLens verification failed with ${violations.size} violation(s):")

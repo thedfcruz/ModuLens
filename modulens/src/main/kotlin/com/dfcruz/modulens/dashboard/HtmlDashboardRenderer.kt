@@ -3,6 +3,7 @@ package com.dfcruz.modulens.dashboard
 import java.io.File
 
 internal object HtmlDashboardRenderer {
+
     fun write(directory: File, dashboardData: String) {
         val assetsDirectory = directory.resolve("assets")
         directory.mkdirs()

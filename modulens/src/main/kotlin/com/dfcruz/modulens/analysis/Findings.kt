@@ -1,4 +1,4 @@
-package com.dfcruz.modulens
+package com.dfcruz.modulens.analysis
 
 enum class FindingId(val ruleName: String) {
     DEPENDENCY_CYCLE("cycle"),
@@ -36,13 +36,13 @@ data class Finding(
     val suggestedFix: String? = null,
 )
 
-data class AnalysisSnapshot(
+data class FindingAnalysisSnapshot(
     val graph: ModuleGraph,
     val libraryInventory: LibraryInventoryAnalysis,
 )
 
 fun interface FindingAnalyzer {
-    fun analyze(snapshot: AnalysisSnapshot): List<Finding>
+    fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding>
 }
 
 object ProjectFindingsAnalyzer {
@@ -52,41 +52,53 @@ object ProjectFindingsAnalyzer {
         VersionConflictFindingAnalyzer,
     )
 
-    fun analyze(snapshot: AnalysisSnapshot): List<Finding> =
+    fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> =
         defaultAnalyzers.flatMap { it.analyze(snapshot) }.sortedWith(findingOrder)
 
-    fun analyzeForVerification(snapshot: AnalysisSnapshot, policy: VerificationPolicy): List<Finding> =
-        (analyze(snapshot) + ThresholdFindingAnalyzer(policy).analyze(snapshot)).sortedWith(findingOrder)
+    fun analyzeForVerification(
+        snapshot: FindingAnalysisSnapshot,
+        policy: VerificationPolicy
+    ): List<Finding> =
+        (analyze(snapshot) + ThresholdFindingAnalyzer(policy).analyze(snapshot)).sortedWith(
+            findingOrder
+        )
 
     private val findingOrder = compareBy<Finding>({ it.id.ordinal }, { it.subject }, { it.message })
 }
 
 object CycleFindingAnalyzer : FindingAnalyzer {
-    override fun analyze(snapshot: AnalysisSnapshot): List<Finding> = snapshot.graph.cycles().map { cycle ->
-        Finding(
-            id = FindingId.DEPENDENCY_CYCLE,
-            severity = FindingSeverity.ERROR,
-            subject = cycle.first(),
-            message = "Dependency cycle: ${cycle.joinToString(" → ")}",
-            evidence = FindingEvidence(dependencyPath = cycle),
-            references = FindingReferences(
-                modules = cycle.distinct().sorted(),
-                moduleEdges = cycle.zipWithNext().map { (from, to) -> ModuleEdgeReference(from, to) },
-            ),
-            suggestedFix = "Remove one dependency in this cycle or introduce an abstraction that breaks it.",
-        )
-    }
+    override fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> =
+        snapshot.graph.cycles().map { cycle ->
+            Finding(
+                id = FindingId.DEPENDENCY_CYCLE,
+                severity = FindingSeverity.ERROR,
+                subject = cycle.first(),
+                message = "Dependency cycle: ${cycle.joinToString(" → ")}",
+                evidence = FindingEvidence(dependencyPath = cycle),
+                references = FindingReferences(
+                    modules = cycle.distinct().sorted(),
+                    moduleEdges = cycle.zipWithNext()
+                        .map { (from, to) -> ModuleEdgeReference(from, to) },
+                ),
+                suggestedFix = "Remove one dependency in this cycle or introduce an abstraction that breaks it.",
+            )
+        }
 }
 
 object RedundantModuleDependencyFindingAnalyzer : FindingAnalyzer {
-    override fun analyze(snapshot: AnalysisSnapshot): List<Finding> = buildList {
+    override fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> = buildList {
         snapshot.graph.modules.sorted().forEach { module ->
             val directDependencies = snapshot.graph.directDependencies(module)
             directDependencies.forEach { dependency ->
                 directDependencies
                     .asSequence()
                     .filterNot { it == dependency }
-                    .mapNotNull { alternative -> snapshot.graph.dependencyPath(alternative, dependency) }
+                    .mapNotNull { alternative ->
+                        snapshot.graph.dependencyPath(
+                            alternative,
+                            dependency
+                        )
+                    }
                     .firstOrNull()
                     ?.let { alternativePath ->
                         add(
@@ -97,7 +109,8 @@ object RedundantModuleDependencyFindingAnalyzer : FindingAnalyzer {
                                 message = "$module directly depends on $dependency, which is already reachable through ${alternativePath.first()}.",
                                 evidence = FindingEvidence(dependencyPath = listOf(module) + alternativePath),
                                 references = FindingReferences(
-                                    modules = (listOf(module) + alternativePath).distinct().sorted(),
+                                    modules = (listOf(module) + alternativePath).distinct()
+                                        .sorted(),
                                     moduleEdges = listOf(ModuleEdgeReference(module, dependency)),
                                 ),
                                 suggestedFix = "Remove the direct dependency unless it intentionally documents or exposes a required relationship.",
@@ -110,7 +123,7 @@ object RedundantModuleDependencyFindingAnalyzer : FindingAnalyzer {
 }
 
 object VersionConflictFindingAnalyzer : FindingAnalyzer {
-    override fun analyze(snapshot: AnalysisSnapshot): List<Finding> =
+    override fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> =
         snapshot.libraryInventory.versionConflicts.map { library ->
             Finding(
                 id = FindingId.VERSION_CONFLICT,
@@ -128,7 +141,7 @@ object VersionConflictFindingAnalyzer : FindingAnalyzer {
 }
 
 private class ThresholdFindingAnalyzer(private val policy: VerificationPolicy) : FindingAnalyzer {
-    override fun analyze(snapshot: AnalysisSnapshot): List<Finding> = buildList {
+    override fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> = buildList {
         val project = snapshot.graph.analyzeProject()
         if (project.maximumDependencyDepth > policy.maxDependencyDepth) {
             add(
@@ -150,8 +163,8 @@ private class ThresholdFindingAnalyzer(private val policy: VerificationPolicy) :
                         id = FindingId.MAXIMUM_DIRECT_DEPENDENCIES,
                         severity = FindingSeverity.ERROR,
                         subject = module,
-                    message = "$module has $count direct dependencies; the configured maximum is ${policy.maxDirectDependencies}.",
-                    references = FindingReferences(modules = listOf(module)),
+                        message = "$module has $count direct dependencies; the configured maximum is ${policy.maxDirectDependencies}.",
+                        references = FindingReferences(modules = listOf(module)),
                         suggestedFix = "Remove unnecessary direct dependencies or split this module's responsibilities.",
                     ),
                 )
