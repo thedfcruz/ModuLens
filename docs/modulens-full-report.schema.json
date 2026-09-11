@@ -112,12 +112,14 @@
     },
     "module": {
       "type": "object",
-      "required": ["path", "directDependencies", "transitiveDependencies", "directDependents", "affectedModules", "libraries", "dependencyDepth", "dependentDepth", "projectCoverage"],
+      "required": ["path", "directDependencies", "transitiveDependencyCount", "transitiveDependencies", "directDependents", "affectedModuleCount", "affectedModules", "libraries", "dependencyDepth", "dependentDepth", "projectCoverage"],
       "properties": {
         "path": { "type": "string" },
         "directDependencies": { "$ref": "#/$defs/stringArray" },
+        "transitiveDependencyCount": { "type": "integer", "minimum": 0 },
         "transitiveDependencies": { "$ref": "#/$defs/stringArray" },
         "directDependents": { "$ref": "#/$defs/stringArray" },
+        "affectedModuleCount": { "type": "integer", "minimum": 0 },
         "affectedModules": { "$ref": "#/$defs/stringArray" },
         "libraries": { "$ref": "#/$defs/stringArray" },
         "dependencyDepth": { "type": "integer", "minimum": 0 },

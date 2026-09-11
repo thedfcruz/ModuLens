@@ -3,7 +3,11 @@
   const findings = data.findings.findings;
   const modules = [...data.modules].sort((a, b) => a.path.localeCompare(b.path));
   const libraries = [...data.libraries.libraries].sort((a, b) => a.identifier.localeCompare(b.identifier));
-  const state = { tab: "findings", selectedModule: null, moduleQuery: "", libraryQuery: "", libraryModuleQuery: "", findingType: "ALL", findingSeverity: "ALL", selectedLibrary: null };
+  const directLibraryCounts = data.directLibraryDeclarations.reduce((counts, declaration) => {
+    counts[declaration.module] = (counts[declaration.module] ?? 0) + 1;
+    return counts;
+  }, {});
+  const state = { tab: "findings", selectedModule: null, moduleQuery: "", moduleSort: "NAME", moduleSortDirection: "ASC", libraryQuery: "", libraryModuleQuery: "", findingType: "ALL", findingSeverity: "ALL", selectedLibrary: null };
   const $ = (id) => document.getElementById(id);
   const escape = (value) => String(value).replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" })[c]);
   const module = (path) => modules.find((item) => item.path === path);
@@ -41,22 +45,28 @@
     const visible = findings.filter((item) => (state.findingType === "ALL" || item.id === state.findingType) && (state.findingSeverity === "ALL" || item.severity === state.findingSeverity));
     $("findings-list").innerHTML = visible.length ? visible.map((item) => {
       const affected = relatedModules(item);
-      return `<article class="finding ${item.severity.toLowerCase()}"><div class="finding-topline"><div><span class="finding-type">${escape(label(item.id))}</span><h3>${escape(item.subject)}</h3></div><span class="badge">${escape(item.severity)}</span></div><p>${escape(item.message)}</p>${item.dependencyPath.length ? `<p class="path">${item.dependencyPath.map(escape).join(" → ")}</p>` : ""}${item.declarations.length ? `<p class="path">Declared by: ${item.declarations.map(escape).join(", ")}</p>` : ""}${affected.length ? `<div class="related-entities"><span>Affected modules</span>${affected.map(moduleLink).join("")}</div>` : ""}${item.suggestedFix ? `<p class="suggestion"><strong>Suggested fix:</strong> ${escape(item.suggestedFix)}</p>` : ""}</article>`;
+      return `<article class="finding ${item.severity.toLowerCase()}"><div class="finding-topline"><div><span class="finding-type">${escape(label(item.id))}</span><h3>${escape(item.subject)}</h3></div><span class="badge">${escape(item.severity)}</span></div><p>${escape(item.message)}</p>${item.dependencyPath.length ? `<p class="path">${item.dependencyPath.map(escape).join(" → ")}</p>` : ""}${item.declarations.length ? `<p class="path">Declared by: ${item.declarations.map(escape).join(", ")}</p>` : ""}${affected.length ? `<div class="related-entities"><span>Related modules</span>${affected.map(moduleLink).join("")}</div>` : ""}${item.suggestedFix ? `<p class="suggestion"><strong>Suggested fix:</strong> ${escape(item.suggestedFix)}</p>` : ""}</article>`;
     }).join("") : empty("No findings match these filters.");
   };
 
-  const metricData = (item) => [[item.directDependencies.length, "Direct dependencies"], [item.transitiveDependencies.length, "Transitive dependencies"], [item.directDependents.length, "Direct dependents"], [item.affectedModules.length, "Affected modules"], [item.libraries.length, "Resolved libraries"], [`${item.projectCoverage.toFixed(1)}%`, "Project impact"]];
-  const metrics = (item) => `<div class="metric-grid">${metricData(item).map(([value, name]) => `<div class="metric"><span>${name}</span><strong>${value}</strong></div>`).join("")}</div>`;
+  const help = (description) => `<span class="help" tabindex="0" role="img" aria-label="${escape(description)}">i<span class="tooltip" role="tooltip">${escape(description)}</span></span>`;
   const entityList = (items, type, noItems) => items.length ? `<div class="entity-list">${[...items].sort((left, right) => left.localeCompare(right)).map((item) => type === "module" ? moduleLink(item) : libraryLink(item)).join("")}</div>` : empty(noItems);
-  const detail = (title, items, type, noItems) => `<section class="detail-section"><h3>${title}<span>${items.length}</span></h3>${entityList(items, type, noItems)}</section>`;
+  const detail = (title, items, type, noItems, count = items.length) => `<section class="detail-section"><h3>${title}<span>${count}</span></h3>${entityList(items, type, noItems)}</section>`;
   const renderModules = () => {
     const selected = module(state.selectedModule);
-    $("selected-module").hidden = !selected;
-    $("selected-module").innerHTML = selected ? `<span>Selected: <code>${escape(selected.path)}</code></span><button class="icon-button" type="button" data-clear-module aria-label="Clear selected module">×</button>` : "";
-    const visible = modules.filter((item) => item.path.toLowerCase().includes(state.moduleQuery.toLowerCase()));
-    $("module-list").innerHTML = visible.length ? visible.map((item) => `<button class="module-row ${item.path === state.selectedModule ? "active" : ""}" type="button" data-module="${escape(item.path)}"><strong>${escape(item.path)}</strong><div class="module-preview"><span>${item.directDependencies.length} direct</span><span>${item.transitiveDependencies.length} transitive</span><span>${item.directDependents.length} dependents</span><span>${item.affectedModules.length} affected</span><span>${item.libraries.length} libraries</span><span>${item.projectCoverage.toFixed(1)}% impact</span></div></button>`).join("") : empty("No modules match this search.");
+    const metricForSort = (item) => ({ DIRECT_DEPENDENCIES: item.directDependencies.length, TRANSITIVE_DEPENDENCIES: item.transitiveDependencyCount ?? item.transitiveDependencies.length, DIRECT_DEPENDENTS: item.directDependents.length, AFFECTED_MODULES: item.affectedModuleCount ?? item.affectedModules.length, LIBRARIES: directLibraryCounts[item.path] ?? 0 })[state.moduleSort];
+    const visible = modules
+      .filter((item) => item.path.toLowerCase().includes(state.moduleQuery.toLowerCase()))
+      .sort((left, right) => {
+        const direction = state.moduleSortDirection === "ASC" ? 1 : -1;
+        const comparison = state.moduleSort === "NAME"
+          ? left.path.localeCompare(right.path)
+          : metricForSort(left) - metricForSort(right) || left.path.localeCompare(right.path);
+        return comparison * direction;
+      });
+    $("module-list").innerHTML = visible.length ? visible.map((item) => `<button class="module-row ${item.path === state.selectedModule ? "active" : ""}" type="button" data-module="${escape(item.path)}"><strong>${escape(item.path)}</strong><div class="module-preview"><span>${item.directDependencies.length} direct dependencies</span><span>${item.transitiveDependencyCount ?? item.transitiveDependencies.length} indirect dependencies</span><span>${item.directDependents.length} direct consumers</span><span>${item.affectedModuleCount ?? item.affectedModules.length} all consumers</span><span>${directLibraryCounts[item.path] ?? 0} declared libraries</span><span>${item.projectCoverage.toFixed(1)}% impact</span></div></button>`).join("") : empty("No modules match this search.");
     if (!selected) { $("module-details").innerHTML = `<div class="details-placeholder"><h3>Select a module</h3><p>Choose any module to explore dependencies, impact, libraries, and findings.</p></div>`; return; }
-    $("module-details").innerHTML = `<div class="details-title"><div><p class="eyebrow">SELECTED MODULE</p><h2><code>${escape(selected.path)}</code></h2></div></div>${metrics(selected)}<div class="detail-grid">${detail("Direct dependencies", selected.directDependencies, "module", "No direct module dependencies.")}${detail("Transitive dependencies", selected.transitiveDependencies, "module", "No transitive module dependencies.")}${detail("Direct dependents", selected.directDependents, "module", "No direct module dependents.")}${detail("Affected modules", selected.affectedModules, "module", "No transitively affected modules.")}</div>${detail("Resolved libraries", selected.libraries, "library", "No resolved external libraries.")}`;
+    $("module-details").innerHTML = `<div class="details-title"><div><p class="eyebrow">SELECTED MODULE</p><h2><code>${escape(selected.path)}</code></h2></div><p class="project-impact">Project impact <strong>${selected.projectCoverage.toFixed(1)}%</strong>${help("Percentage of other modules that directly or indirectly depend on this module.")}</p></div><div class="detail-grid">${detail(`Direct module dependencies ${help("Modules this module declares as dependencies.")}`, selected.directDependencies, "module", "No direct module dependencies.")}${detail(`Indirect module dependencies ${help("Modules reachable through one or more dependency hops. Direct dependencies are excluded.")}`, selected.transitiveDependencies, "module", "No indirect module dependencies, or relationship lists are disabled in this report.", selected.transitiveDependencyCount ?? selected.transitiveDependencies.length)}${detail(`Direct consumers ${help("Modules that directly declare this module as a dependency.")}`, selected.directDependents, "module", "No direct consumers.")}${detail(`All consumers (change impact) ${help("All modules that directly or indirectly depend on this module. A change here can require them to rebuild, retest, or be reviewed.")}`, selected.affectedModules, "module", "No consumers are affected by changes to this module, or relationship lists are disabled in this report.", selected.affectedModuleCount ?? selected.affectedModules.length)}</div>${detail(`Resolved libraries ${help("External libraries resolved for this module. This optional report section may be disabled.")}`, selected.libraries, "library", "No resolved external libraries, or this optional report section is disabled.")}`;
   };
 
   const renderLibraries = () => {
@@ -86,11 +96,12 @@
     const moduleTarget = event.target.closest("[data-module]"); if (moduleTarget) selectModule(moduleTarget.dataset.module);
     const libraryTarget = event.target.closest("[data-library]"); if (libraryTarget) openLibrary(libraryTarget.dataset.library);
     const usersTarget = event.target.closest("[data-library-users]"); if (usersTarget) openLibraryUsers(usersTarget.dataset.libraryUsers);
-    if (event.target.closest("[data-clear-module]")) { state.selectedModule = null; renderModules(); }
   });
   $("finding-type").addEventListener("change", (event) => { state.findingType = event.target.value; renderFindings(); });
   $("finding-severity").addEventListener("change", (event) => { state.findingSeverity = event.target.value; renderFindings(); });
   $("module-filter").addEventListener("input", (event) => { state.moduleQuery = event.target.value; state.selectedModule = null; renderModules(); });
+  $("module-sort").addEventListener("change", (event) => { state.moduleSort = event.target.value; renderModules(); });
+  $("module-sort-direction").addEventListener("change", (event) => { state.moduleSortDirection = event.target.value; renderModules(); });
   $("library-filter").addEventListener("input", (event) => { state.libraryQuery = event.target.value; renderLibraries(); });
   $("clear-library-filter").addEventListener("click", () => { state.libraryQuery = ""; $("library-filter").value = ""; renderLibraries(); });
   $("library-module-filter").addEventListener("input", (event) => { state.libraryModuleQuery = event.target.value; renderLibraryDialog(); });

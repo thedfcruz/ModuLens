@@ -5,29 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ModuLens report</title>
   <link rel="stylesheet" href="assets/modulens.css">
-  <script defer src="assets/modulens-data.js"></script>
-  <script defer src="assets/modulens.js"></script>
+  <script defer src="assets/modulens-data.js">
+</script>
+  <script defer src="assets/modulens.js">
+</script>
 </head>
 <body>
-  <header class="topbar"><div class="container topbar-content">
-    <a class="brand" href="#overview" aria-label="ModuLens report home"><span class="brand-mark">M</span><span>ModuLens</span></a>
+  <header class="topbar">
+<div class="container topbar-content">
+    <a class="brand" href="#overview" aria-label="ModuLens report home">
+<span class="brand-mark">M</span>
+<span>ModuLens</span>
+</a>
     <nav aria-label="Report sections">
       <button class="tab-link active" type="button" data-tab="findings">Findings</button>
       <button class="tab-link" type="button" data-tab="modules">Modules</button>
       <button class="tab-link" type="button" data-tab="libraries">Libraries</button>
     </nav>
-  </div></header>
+  </div>
+</header>
   <main class="container">
-    <section id="overview" class="hero"><div><p class="eyebrow">DEPENDENCY HEALTH</p><h1>Know what connects your build.</h1><p>Explore module impact, investigate findings, and trace external libraries to the modules that use them.</p></div><div id="summary" class="summary-grid" aria-label="Project summary"></div></section>
+    <section id="overview" class="hero">
+<div>
+<p class="eyebrow">DEPENDENCY HEALTH</p>
+<h1>Know what connects your build.</h1>
+<p>Explore module impact, investigate findings, and trace external libraries to the modules that use them.</p>
+</div>
+<div id="summary" class="summary-grid" aria-label="Project summary">
+</div>
+</section>
     <div class="tabs" role="tablist" aria-label="Analysis views">
-      <button class="tab active" role="tab" aria-selected="true" type="button" data-tab="findings">Findings <span id="findings-tab-count"></span></button>
-      <button class="tab" role="tab" aria-selected="false" type="button" data-tab="modules">Modules <span id="modules-tab-count"></span></button>
-      <button class="tab" role="tab" aria-selected="false" type="button" data-tab="libraries">Libraries <span id="libraries-tab-count"></span></button>
+      <button class="tab active" role="tab" aria-selected="true" type="button" data-tab="findings">Findings <span id="findings-tab-count">
+</span>
+</button>
+      <button class="tab" role="tab" aria-selected="false" type="button" data-tab="modules">Modules <span id="modules-tab-count">
+</span>
+</button>
+      <button class="tab" role="tab" aria-selected="false" type="button" data-tab="libraries">Libraries <span id="libraries-tab-count">
+</span>
+</button>
     </div>
-    <section id="findings" class="section tab-panel active" role="tabpanel"><div class="section-heading"><div><p class="eyebrow">ACTIONABLE</p><h2>Findings</h2><p>Filter findings by rule or severity, then open the related module for context.</p></div><div class="controls filters"><label class="select-field" for="finding-type"><span>Finding type</span><select id="finding-type"></select></label><label class="select-field" for="finding-severity"><span>Severity</span><select id="finding-severity"></select></label></div></div><div id="findings-list" class="findings-list"></div></section>
-    <section id="modules" class="section tab-panel" role="tabpanel" hidden><div class="section-heading"><div><p class="eyebrow">MODULE EXPLORER</p><h2>Modules and impact</h2><p>Choose a module to understand its connections, library closure, and related findings.</p></div><label class="search-field" for="module-filter"><span>Search modules</span><input id="module-filter" type="search" placeholder=":feature, :core…"></label></div><div id="selected-module" class="selection-bar" hidden></div><div class="module-layout"><div id="module-list" class="module-list" aria-label="Module list"></div><article id="module-details" class="module-details" aria-live="polite"></article></div></section>
-    <section id="libraries" class="section tab-panel" role="tabpanel" hidden><div class="section-heading"><div><p class="eyebrow">LIBRARY EXPLORER</p><h2>Resolved external libraries</h2><p>Find a library, inspect version status, and see the modules that use it.</p></div><label class="search-field" for="library-filter"><span>Search libraries</span><input id="library-filter" type="search" placeholder="androidx, kotlinx, group:name…"></label></div><div class="library-meta"><span id="library-count"></span><button id="clear-library-filter" class="text-button" type="button" hidden>Clear search</button></div><div id="library-list" class="library-list"></div></section>
+    <section id="findings" class="section tab-panel active" role="tabpanel">
+<div class="section-heading">
+<div>
+<p class="eyebrow">ACTIONABLE</p>
+<h2>Findings</h2>
+<p>Filter findings by rule or severity, then open the related module for context.</p>
+</div>
+<div class="controls filters">
+<label class="select-field" for="finding-type">
+<span>Finding type</span>
+<select id="finding-type">
+</select>
+</label>
+<label class="select-field" for="finding-severity">
+<span>Severity</span>
+<select id="finding-severity">
+</select>
+</label>
+</div>
+</div>
+<div id="findings-list" class="findings-list">
+</div>
+</section>
+    <section id="modules" class="section tab-panel" role="tabpanel" hidden>
+<div class="section-heading">
+<div>
+<p class="eyebrow">MODULE EXPLORER</p>
+<h2>Modules and impact</h2>
+<p>Choose a module to understand its direct connections and its change impact across the project.</p>
+</div>
+<div class="controls">
+<label class="search-field" for="module-filter">
+<span>Search modules</span>
+<input id="module-filter" type="search" placeholder=":feature, :core…">
+</label>
+<label class="select-field" for="module-sort">
+<span>Order modules by</span>
+<select id="module-sort">
+<option value="NAME">Name (A–Z)</option>
+<option value="DIRECT_DEPENDENCIES">Direct dependencies</option>
+<option value="TRANSITIVE_DEPENDENCIES">Indirect dependencies</option>
+<option value="DIRECT_DEPENDENTS">Direct consumers</option>
+<option value="AFFECTED_MODULES">All consumers (change impact)</option>
+<option value="LIBRARIES">Declared libraries</option>
+</select>
+</label>
+<label class="select-field" for="module-sort-direction">
+<span>Direction</span>
+<select id="module-sort-direction">
+<option value="ASC">Ascending</option>
+<option value="DESC">Descending</option>
+</select>
+</label>
+</div>
+</div>
+<div class="module-layout">
+<div id="module-list" class="module-list" aria-label="Module list">
+</div>
+<article id="module-details" class="module-details" aria-live="polite">
+</article>
+</div>
+</section>
+    <section id="libraries" class="section tab-panel" role="tabpanel" hidden>
+<div class="section-heading">
+<div>
+<p class="eyebrow">LIBRARY EXPLORER</p>
+<h2>Resolved external libraries</h2>
+<p>Find a library, inspect version status, and see the modules that use it.</p>
+</div>
+<label class="search-field" for="library-filter">
+<span>Search libraries</span>
+<input id="library-filter" type="search" placeholder="androidx, kotlinx, group:name…">
+</label>
+</div>
+<div class="library-meta">
+<span id="library-count">
+</span>
+<button id="clear-library-filter" class="text-button" type="button" hidden>Clear search</button>
+</div>
+<div id="library-list" class="library-list">
+</div>
+</section>
   </main>
-  <dialog id="library-modules-dialog" class="modules-dialog"><div class="dialog-heading"><div><p class="eyebrow">LIBRARY USAGE</p><h2 id="dialog-library-name"></h2></div><button id="close-library-dialog" class="icon-button" type="button" aria-label="Close">×</button></div><label class="search-field" for="library-module-filter"><span>Search modules</span><input id="library-module-filter" type="search" placeholder=":feature, :core…"></label><div id="dialog-module-list" class="dialog-module-list"></div></dialog>
+  <dialog id="library-modules-dialog" class="modules-dialog">
+<div class="dialog-heading">
+<div>
+<p class="eyebrow">LIBRARY USAGE</p>
+<h2 id="dialog-library-name">
+</h2>
+</div>
+<button id="close-library-dialog" class="icon-button" type="button" aria-label="Close">×</button>
+</div>
+<label class="search-field" for="library-module-filter">
+<span>Search modules</span>
+<input id="library-module-filter" type="search" placeholder=":feature, :core…">
+</label>
+<div id="dialog-module-list" class="dialog-module-list">
+</div>
+</dialog>
 </body>
 </html>

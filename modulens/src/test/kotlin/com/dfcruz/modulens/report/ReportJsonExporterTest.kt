@@ -57,6 +57,11 @@ class ReportJsonExporterTest {
         )
         assertEquals(1, report.getValue("directModuleDependencies").jsonArray.size)
         assertEquals(1, report.getValue("directLibraryDeclarations").jsonArray.size)
+        val appModule = report.getValue("modules").jsonArray
+            .first { it.jsonObject.getValue("path").jsonPrimitive.content == ":app" }
+            .jsonObject
+        assertEquals("1", appModule.getValue("transitiveDependencyCount").jsonPrimitive.content)
+        assertEquals("0", appModule.getValue("affectedModuleCount").jsonPrimitive.content)
         val finding = report.getValue("findings").jsonObject
             .getValue("findings").jsonArray
             .first { it.jsonObject.getValue("id").jsonPrimitive.content == "REDUNDANT_MODULE_DEPENDENCY" }
