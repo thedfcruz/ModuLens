@@ -105,4 +105,41 @@ class ReportJsonExporterTest {
         assertTrue(app.getValue("libraries").jsonArray.isEmpty())
         assertTrue(report.getValue("findings").jsonObject.getValue("findings").jsonArray.isEmpty())
     }
+
+    @Test
+    fun `indexes resolved library usage by library`() {
+        val snapshot = ReportAnalysisSnapshotBuilder.build(
+            ReportAnalysisInput(
+                graph = mapOf(":app" to emptyList(), ":feature" to emptyList()),
+                libraryDeclarations = emptyMap(),
+                resolvedLibraries = listOf("com.example:library:1.0"),
+                moduleLibraries = mapOf(
+                    ":app" to listOf("com.example:library:1.0", "com.example:other:1.0"),
+                    ":feature" to listOf("com.example:library:1.0"),
+                ),
+                metadata = ReportMetadata(
+                    pluginId = "com.dfcruz.modulens",
+                    gradleVersion = "9.5",
+                    includedScopes = listOf("production"),
+                    excludedModules = emptyList(),
+                    externalLibraryResolutionEnabled = true,
+                    options = ReportOptions(includeLibraryUsageModules = true),
+                ),
+                directModuleDependencies = emptyList(),
+                directLibraryDeclarations = emptyList(),
+            ),
+        )
+
+        val libraries = Json.parseToJsonElement(ReportJsonExporter.fullReport(snapshot)).jsonObject
+            .getValue("libraries").jsonObject
+            .getValue("libraries").jsonArray
+        val library = libraries.first {
+            it.jsonObject.getValue("identifier").jsonPrimitive.content == "com.example:library"
+        }.jsonObject
+
+        assertEquals(
+            listOf(":app", ":feature"),
+            library.getValue("modules").jsonArray.map { it.jsonPrimitive.content },
+        )
+    }
 }

@@ -49,6 +49,11 @@ class ModuleGraph(graph: Map<String, List<String>>) {
         }
         reversed.mapValues { (_, dependents) -> dependents.distinct().sorted() }
     }
+    private val dependencyClosures = mutableMapOf<String, Set<String>>()
+    private val dependentClosures = mutableMapOf<String, Set<String>>()
+    private val dependencyDepths = mutableMapOf<String, Int>()
+    private val dependentDepths = mutableMapOf<String, Int>()
+    private val detectedCycles by lazy { findCycles() }
 
     val modules: Set<String> get() = adjacency.keys
     val dependenciesByModule: Map<String, List<String>> get() = adjacency
@@ -57,9 +62,11 @@ class ModuleGraph(graph: Map<String, List<String>>) {
 
     fun directDependents(module: String): List<String> = reverseAdjacency[module].orEmpty()
 
-    fun transitiveDependencies(module: String): Set<String> = transitive(adjacency, module)
+    fun transitiveDependencies(module: String): Set<String> =
+        dependencyClosures.getOrPut(module) { transitive(adjacency, module) }
 
-    fun transitiveDependents(module: String): Set<String> = transitive(reverseAdjacency, module)
+    fun transitiveDependents(module: String): Set<String> =
+        dependentClosures.getOrPut(module) { transitive(reverseAdjacency, module) }
 
     fun redundantDirectDependencies(module: String): Map<String, List<String>> {
         val directDependencies = directDependencies(module)
@@ -89,7 +96,9 @@ class ModuleGraph(graph: Map<String, List<String>>) {
         return null
     }
 
-    fun cycles(): List<List<String>> {
+    fun cycles(): List<List<String>> = detectedCycles
+
+    private fun findCycles(): List<List<String>> {
         val cycles = mutableListOf<List<String>>()
         adjacency.keys.sorted().forEach { start ->
             fun visit(module: String, path: List<String>, visited: Set<String>) {
@@ -165,9 +174,11 @@ class ModuleGraph(graph: Map<String, List<String>>) {
         source.map { (module, dependencies) -> module to dependencies.size }
             .sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
 
-    private fun dependencyDepth(module: String): Int = depth(adjacency, module)
+    private fun dependencyDepth(module: String): Int =
+        dependencyDepths.getOrPut(module) { depth(adjacency, module) }
 
-    private fun dependentDepth(module: String): Int = depth(reverseAdjacency, module)
+    private fun dependentDepth(module: String): Int =
+        dependentDepths.getOrPut(module) { depth(reverseAdjacency, module) }
 
     private fun depth(source: Map<String, List<String>>, start: String): Int {
         fun visit(module: String, visited: Set<String>): Int {

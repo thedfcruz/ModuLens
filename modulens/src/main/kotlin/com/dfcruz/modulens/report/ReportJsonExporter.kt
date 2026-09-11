@@ -34,8 +34,21 @@ object ReportJsonExporter {
         metadata: ReportMetadata,
         directModuleDependencies: List<DirectModuleDependencyDeclaration>,
         directLibraryDeclarations: List<DirectLibraryDependencyDeclaration>,
-    ): String = json.encodeToString(
-        FullReport(
+    ): String {
+        val usageModulesByLibrary = if (metadata.options.includeLibraryUsageModules) {
+            buildMap<String, MutableSet<String>> {
+                moduleLibraries.forEach { (module, coordinates) ->
+                    coordinates.forEach { coordinate ->
+                        getOrPut(libraryIdentifier(coordinate)) { linkedSetOf() }.add(module)
+                    }
+                }
+            }.mapValues { (_, modules) -> modules.sorted() }
+        } else {
+            emptyMap()
+        }
+
+        return json.encodeToString(
+            FullReport(
             schemaVersion = 1,
             reportType = "modulens-full-report",
             metadata = ReportMetadataDto(
@@ -111,16 +124,7 @@ object ReportJsonExporter {
                 directDeclarations = libraries.directDeclarations,
                 versionConflicts = libraries.versionConflicts.map { it.identifier }.sorted(),
                 libraries = libraries.entries.sortedBy { it.identifier }.map { entry ->
-                    val usageModules = if (metadata.options.includeLibraryUsageModules) {
-                        moduleLibraries
-                            .filterValues { coordinates ->
-                                entry.identifier in coordinates.map(::libraryIdentifier)
-                            }
-                            .keys
-                            .sorted()
-                    } else {
-                        emptyList()
-                    }
+                    val usageModules = usageModulesByLibrary[entry.identifier].orEmpty()
                     LibraryReport(
                         identifier = entry.identifier,
                         declaredVersions = entry.declaredVersions.sorted(),
@@ -136,8 +140,9 @@ object ReportJsonExporter {
                     .sortedWith(compareBy<Finding>({ it.id.name }, { it.subject }, { it.message }))
                     .map(::findingReport),
             ),
-        ),
-    )
+            ),
+        )
+    }
 
 private fun findingReport(finding: Finding): FindingReport = FindingReport(
         id = finding.id.name,

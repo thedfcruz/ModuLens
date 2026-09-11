@@ -20,10 +20,12 @@
     ? finding.references.modules
     : modules.filter((item) => [finding.subject, finding.message, ...finding.dependencyPath, ...finding.declarations].some((value) => value.includes(item.path))).map((item) => item.path);
   const directLibraryDeclarations = data.directLibraryDeclarations ?? [];
-  const libraryDeclarations = (id) => directLibraryDeclarations
-    .filter((item) => item.identifier === id)
+  const declarationsByLibrary = directLibraryDeclarations.reduce((result, declaration) => {
+    (result[declaration.identifier] ??= []).push(declaration);
+    return result;
+  }, {});
+  const libraryDeclarations = (id) => [...(declarationsByLibrary[id] ?? [])]
     .sort((left, right) => left.module.localeCompare(right.module) || left.configuration.localeCompare(right.configuration));
-  const directConsumers = (id) => [...new Set(libraryDeclarations(id).map((item) => item.module))].sort();
   const reverseDependencies = modules.reduce((result, item) => {
     item.directDependencies.forEach((dependency) => (result[dependency] ??= []).push(item.path));
     return result;
@@ -40,7 +42,7 @@
   };
   const libraryFacts = (item) => {
     const declarations = libraryDeclarations(item.identifier);
-    const direct = directConsumers(item.identifier);
+    const direct = [...new Set(declarations.map((item) => item.module))].sort();
     const resolved = [...new Set(item.modules ?? [])].sort();
     const usageKnown = data.metadata.options.includeLibraryUsageModules;
     const transitive = usageKnown ? resolved.filter((path) => !direct.includes(path)) : [];
@@ -48,8 +50,9 @@
     const hasDirect = direct.length > 0;
     const hasTransitive = transitive.length > 0;
     const source = hasDirect && hasTransitive ? "MIXED" : hasDirect ? "DIRECT" : hasTransitive ? "TRANSITIVE" : "UNKNOWN";
-    return { declarations, direct, resolved, transitive, usageKnown, totalConsumers, impact: consumersOfModules(direct), source, scopes: [...new Set(declarations.map((item) => item.scope.toUpperCase()))] };
+    return { declarations, direct, resolved, transitive, usageKnown, totalConsumers, impact: consumersOfModules(direct), source };
   };
+  const libraryFactsById = new Map(libraries.map((item) => [item.identifier, libraryFacts(item)]));
   const librarySourceLabel = (source) => ({
     DIRECT: "Direct declaration",
     MIXED: "Direct + transitive",
@@ -106,16 +109,6 @@
     $("module-details").innerHTML = `<div class="details-title"><div><p class="eyebrow">SELECTED MODULE</p><h2><code>${escape(selected.path)}</code></h2></div><p class="project-impact">Project impact <strong>${selected.projectCoverage.toFixed(1)}%</strong>${help("Percentage of other modules that directly or indirectly depend on this module.")}</p></div><div class="detail-grid">${detail(`Direct module dependencies ${help("Modules this module declares as dependencies.")}`, selected.directDependencies, "module", "No direct module dependencies.")}${detail(`Indirect module dependencies ${help("Modules reachable through one or more dependency hops. Direct dependencies are excluded.")}`, selected.transitiveDependencies, "module", "No indirect module dependencies, or relationship lists are disabled in this report.", selected.transitiveDependencyCount ?? selected.transitiveDependencies.length)}${detail(`Direct consumers ${help("Modules that directly declare this module as a dependency.")}`, selected.directDependents, "module", "No direct consumers.")}${detail(`All consumers (change impact) ${help("All modules that directly or indirectly depend on this module. A change here can require them to rebuild, retest, or be reviewed.")}`, selected.affectedModules, "module", "No consumers are affected by changes to this module, or relationship lists are disabled in this report.", selected.affectedModuleCount ?? selected.affectedModules.length)}</div>${detail(`Resolved libraries ${help("External libraries resolved for this module. This optional report section may be disabled.")}`, selected.libraries, "library", "No resolved external libraries, or this optional report section is disabled.")}`;
   };
 
-  const renderLibraries = () => {
-    const visible = libraries.filter((item) => `${item.identifier} ${item.resolvedVersion ?? ""} ${item.declaredVersions.join(" ")}`.toLowerCase().includes(state.libraryQuery.toLowerCase()));
-    $("library-count").textContent = `${visible.length} of ${libraries.length} resolved libraries`;
-    $("clear-library-filter").hidden = !state.libraryQuery;
-    $("library-list").innerHTML = visible.length ? visible.map((item) => {
-      const transitive = item.modules.filter((path) => !item.directModules.includes(path)).length;
-      const conflict = data.libraries.versionConflicts.includes(item.identifier);
-      return `<article class="library-card ${conflict ? "has-conflict" : ""}"><div class="library-card-heading"><div><button class="library-title" type="button" data-library="${escape(item.identifier)}">${escape(item.identifier)}</button><p>Resolved ${escape(item.resolvedVersion ?? "version unavailable")}</p></div><span class="status ${conflict ? "conflict" : ""}">${conflict ? "Version conflict" : "Aligned"}</span></div><dl class="library-facts"><div><dt>Versions detected</dt><dd>${escape(item.declaredVersions.length ? item.declaredVersions.join(", ") : "Resolved transitively")}</dd></div><div><dt>Usage</dt><dd>${item.directModules.length ? `Directly used by ${item.directModules.length} module${item.directModules.length === 1 ? "" : "s"}` : "No direct declarations"}<br>${transitive ? `Transitively used by ${transitive} module${transitive === 1 ? "" : "s"}` : "No transitive usage"}</dd></div></dl><button class="usage-button" type="button" data-library-users="${escape(item.identifier)}">Used by ${item.modules.length} module${item.modules.length === 1 ? "" : "s"} <span>View modules →</span></button></article>`;
-    }).join("") : empty("No libraries match this search.");
-  };
 
   const renderLibraryWorkspace = () => {
     const hasConflict = (item) => data.libraries.versionConflicts.includes(item.identifier);
@@ -124,7 +117,7 @@
       CHANGE_IMPACT: facts.impact.length,
       CONFLICT: hasConflict(item) ? 1 : 0,
     })[state.librarySort];
-    const visible = libraries.map((item) => ({ item, facts: libraryFacts(item) }))
+    const visible = libraries.map((item) => ({ item, facts: libraryFactsById.get(item.identifier) }))
       .filter(({ item, facts }) =>
         [item.identifier, item.resolvedVersion || "", ...item.declaredVersions].join(" ").toLowerCase().includes(state.libraryQuery.toLowerCase())
         && (state.librarySource === "ALL" || facts.source === state.librarySource)
@@ -148,7 +141,7 @@
       $("library-details").innerHTML = '<div class="details-placeholder"><h3>Select a library</h3><p>Choose a library to trace declarations, consumers, versions, and change impact.</p></div>';
       return;
     }
-    const facts = libraryFacts(selected);
+    const facts = libraryFactsById.get(selected.identifier);
     const conflict = hasConflict(selected);
     const declarations = facts.declarations.length
       ? '<div class="declaration-list">' + facts.declarations.map((item) => '<div class="declaration-row">' + moduleLink(item.module) + "<span>" + escape(item.configuration) + "</span><span>" + escape(item.scope) + "</span><code>" + escape(item.declaredVersion) + "</code></div>").join("") + "</div>"
@@ -157,21 +150,9 @@
     const resolved = facts.usageKnown
       ? list("Resolved consumers " + help("Modules where Gradle resolved this library, whether they declare it directly or receive it transitively."), facts.resolved, "No module resolved this library.", facts.totalConsumers)
       : list("Resolved consumers " + help("This relationship list was omitted to keep the JSON report compact. Enable includeLibraryUsageModules to include it."), [], "Resolved module usage is not included in this report.", facts.totalConsumers);
-    const relatedFindings = findings.filter((item) => item.references?.libraries?.includes(selected.identifier));
-    const findingsMarkup = relatedFindings.length
-      ? '<div class="module-finding-list">' + relatedFindings.map((item) => '<div><span class="badge ' + item.severity.toLowerCase() + '">' + escape(item.severity) + "</span><strong>" + escape(label(item.id)) + "</strong><p>" + escape(item.message) + "</p></div>").join("") + "</div>"
-      : empty("No findings are associated with this library.");
-    $("library-details").innerHTML = '<div class="details-title"><div><p class="eyebrow">SELECTED LIBRARY</p><h2><code>' + escape(selected.identifier) + '</code></h2></div><div class="library-status-summary"><span class="status ' + (conflict ? "conflict" : "") + '">' + (conflict ? "Version conflict" : "Aligned") + "</span><p>" + librarySourceLabel(facts.source) + '</p></div></div><div class="library-detail-facts"><div><span>Direct declarations</span><strong>' + facts.declarations.length + '</strong></div><div><span>Total consumers</span><strong>' + facts.totalConsumers + '</strong></div><div><span>Change impact</span><strong>' + facts.impact.length + "</strong>" + help("Modules that directly declare this library, plus modules that directly or indirectly depend on them.") + '</div><div><span>Versions detected</span><strong>' + selected.declaredVersions.length + "</strong></div></div><section class=\"detail-section\"><h3>Direct declarations <span>" + facts.declarations.length + "</span></h3>" + declarations + '</section><div class="detail-grid">' + list("Direct declarer modules " + help("Modules with an explicit dependency declaration for this library."), facts.direct, "No direct declarer modules.") + list("Transitive consumers " + help("Modules that resolve this library without directly declaring it."), facts.transitive, facts.usageKnown ? "No transitive consumers." : "Transitive usage is not included in this report.", facts.usageKnown ? facts.transitive.length : 0) + list("Change impact " + help("Modules potentially affected when a direct declaration of this library changes."), facts.impact, "No modules are exposed through direct declarations.") + resolved + '</div><section class="detail-section"><h3>Version resolution <span>' + selected.declaredVersions.length + '</span></h3><div class="version-resolution"><div><span>Requested versions</span><strong>' + escape(selected.declaredVersions.length ? selected.declaredVersions.join(", ") : "No direct version request") + '</strong></div><div><span>Resolved version</span><strong>' + escape(selected.resolvedVersion || "Unavailable") + "</strong></div></div></section><section class=\"detail-section\"><h3>Related findings <span>" + relatedFindings.length + "</span></h3>" + findingsMarkup + "</section>";
-    $("library-details").lastElementChild?.remove();
+    $("library-details").innerHTML = '<div class="details-title"><div><p class="eyebrow">SELECTED LIBRARY</p><h2><code>' + escape(selected.identifier) + '</code></h2></div><div class="library-status-summary"><span class="status ' + (conflict ? "conflict" : "") + '">' + (conflict ? "Version conflict" : "Aligned") + "</span><p>" + librarySourceLabel(facts.source) + '</p></div></div><div class="library-detail-facts"><div><span>Direct declarations</span><strong>' + facts.declarations.length + '</strong></div><div><span>Total consumers</span><strong>' + facts.totalConsumers + '</strong></div><div><span>Change impact</span><strong>' + facts.impact.length + "</strong>" + help("Modules that directly declare this library, plus modules that directly or indirectly depend on them.") + '</div><div><span>Versions detected</span><strong>' + selected.declaredVersions.length + "</strong></div></div><section class=\"detail-section\"><h3>Direct declarations <span>" + facts.declarations.length + "</span></h3>" + declarations + '</section><div class="detail-grid">' + list("Direct declarer modules " + help("Modules with an explicit dependency declaration for this library."), facts.direct, "No direct declarer modules.") + list("Transitive consumers " + help("Modules that resolve this library without directly declaring it."), facts.transitive, facts.usageKnown ? "No transitive consumers." : "Transitive usage is not included in this report.", facts.usageKnown ? facts.transitive.length : 0) + list("Change impact " + help("Modules potentially affected when a direct declaration of this library changes."), facts.impact, "No modules are exposed through direct declarations.") + resolved + '</div><section class="detail-section"><h3>Version resolution <span>' + selected.declaredVersions.length + '</span></h3><div class="version-resolution"><div><span>Requested versions</span><strong>' + escape(selected.declaredVersions.length ? selected.declaredVersions.join(", ") : "No direct version request") + '</strong></div><div><span>Resolved version</span><strong>' + escape(selected.resolvedVersion || "Unavailable") + "</strong></div></div></section>";
   };
 
-  const renderLibraryDialog = () => {
-    const selected = library(state.selectedLibrary);
-    if (!selected) return;
-    const visible = selected.modules.filter((path) => path.toLowerCase().includes(state.libraryModuleQuery.toLowerCase()));
-    $("dialog-library-name").textContent = selected.identifier;
-    $("dialog-module-list").innerHTML = visible.length ? visible.map((path) => `<button class="dialog-module" type="button" data-module="${escape(path)}"><code>${escape(path)}</code><span>${selected.directModules.includes(path) ? "Direct declaration" : "Transitive resolution"}</span></button>`).join("") : empty("No modules match this search.");
-  };
   const selectModule = (path) => { state.selectedModule = path; state.moduleQuery = ""; $("module-filter").value = ""; renderModules(); setTab("modules"); };
   const openLibrary = (id) => { state.selectedLibrary = id; renderLibraryWorkspace(); setTab("libraries"); };
 
