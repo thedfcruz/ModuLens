@@ -130,8 +130,6 @@
           : metric(left.item, left.facts) - metric(right.item, right.facts) || left.item.identifier.localeCompare(right.item.identifier);
         return comparison * direction;
       });
-    $("library-count").textContent = visible.length + " of " + libraries.length + " resolved libraries";
-    $("clear-library-filter").hidden = !state.libraryQuery;
     $("library-list").innerHTML = visible.length ? visible.map(({ item, facts }) => {
       const conflict = hasConflict(item);
       return '<button class="library-row ' + (item.identifier === state.selectedLibrary ? "active " : "") + (conflict ? "has-conflict" : "") + '" type="button" data-library="' + escape(item.identifier) + '"><div class="library-row-heading"><strong>' + escape(item.identifier) + '</strong><span class="status ' + (conflict ? "conflict" : "") + '">' + (conflict ? "Conflict" : "Aligned") + '</span></div><span class="library-version">Resolved ' + escape(item.resolvedVersion || "version unavailable") + '</span><div class="library-preview"><span>' + facts.declarations.length + ' direct declarations</span><span>' + facts.totalConsumers + ' consumers</span><span>' + facts.impact.length + ' change impact</span><span>' + librarySourceLabel(facts.source) + "</span></div></button>";
@@ -167,7 +165,6 @@
   $("module-sort").addEventListener("change", (event) => { state.moduleSort = event.target.value; renderModules(); });
   $("module-sort-direction").addEventListener("change", (event) => { state.moduleSortDirection = event.target.value; renderModules(); });
   $("library-filter").addEventListener("input", (event) => { state.libraryQuery = event.target.value; renderLibraryWorkspace(); });
-  $("clear-library-filter").addEventListener("click", () => { state.libraryQuery = ""; $("library-filter").value = ""; renderLibraryWorkspace(); });
   $("library-source-filter").addEventListener("change", (event) => { state.librarySource = event.target.value; renderLibraryWorkspace(); });
   $("library-conflict-filter").addEventListener("change", (event) => { state.libraryConflict = event.target.value; renderLibraryWorkspace(); });
   $("library-sort").addEventListener("change", (event) => { state.librarySort = event.target.value; renderLibraryWorkspace(); });

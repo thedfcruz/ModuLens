@@ -114,7 +114,7 @@
 <h2>Resolved external libraries</h2>
 <p>Prioritise library risk, trace direct declarations, and understand the modules exposed to a change.</p>
 </div>
-<div class="controls">
+<div class="controls library-controls">
 <label class="search-field" for="library-filter">
 <span>Search libraries</span>
 <input id="library-filter" type="search" placeholder="androidx, kotlinx, group:name…">
@@ -136,14 +136,6 @@
 <option value="ALIGNED">Aligned only</option>
 </select>
 </label>
-</div>
-</div>
-<div class="library-toolbar">
-<div class="library-meta">
-<span id="library-count">
-</span>
-<button id="clear-library-filter" class="text-button" type="button" hidden>Clear search</button>
-</div>
 <div class="controls library-sort-controls">
 <label class="select-field" for="library-sort">
 <span>Order libraries by</span>
@@ -161,6 +153,7 @@
 <option value="DESC">Descending</option>
 </select>
 </label>
+</div>
 </div>
 </div>
 <div class="library-layout">
