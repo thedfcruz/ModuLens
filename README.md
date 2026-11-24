@@ -50,7 +50,6 @@ All tasks appear under the `ModuLens` group in `./gradlew tasks`.
 | `moduLensFindings` | Reports actionable dependency findings with evidence and suggested fixes. |
 | `moduLensDashboard` | Generates only the interactive HTML dashboard for module, finding, impact, and library analysis. |
 | `moduLensReport` | Exports the complete graph, module analysis, library inventory, and findings as one JSON report for automation or AI review. |
-| `moduLensVerify` | Applies configured policies and fails the build for violations; intended for CI. |
 
 ### Project-wide tasks
 
@@ -60,7 +59,6 @@ All tasks appear under the `ModuLens` group in `./gradlew tasks`.
 ./gradlew moduLensFindings
 ./gradlew moduLensDashboard
 ./gradlew moduLensReport
-./gradlew moduLensVerify
 ```
 
 ### Analyse one module
@@ -93,7 +91,7 @@ Path: :app → :feature → :core:domain
 Suggested fix: Remove the direct dependency unless it intentionally documents or exposes a required relationship.
 ```
 
-Local analysis marks cycles as errors and the other current findings as warnings. CI decides which types should fail the build.
+Local analysis marks cycles as errors and the other current findings as warnings.
 
 ## Configuration
 
@@ -132,13 +130,6 @@ moduLens {
         ignoredLibraryPatterns.addAll("androidx.*", "com.android.tools.*")
     }
 
-    verification {
-        failOnCycles.set(true)
-        failOnVersionConflicts.set(true)
-        failOnRedundantDependencies.set(true)
-        maxDependencyDepth.set(4)
-        maxDirectDependencies.set(8)
-    }
 }
 ```
 
@@ -223,22 +214,6 @@ Run the aggregate report directly when a tool needs the complete project context
 It writes `build/reports/modulens/report.json`. By default, this is a compact, AI-friendly report: project summary, direct module and library declarations, direct module relationships, and findings. Resolved library closures and transitive module relationships are opt-in through `report` configuration because they grow rapidly in large projects. Reverse library usage additionally requires `includeResolvedLibraries.set(true)`, because it is derived from the resolved module-library data. Library glob patterns can remove known injected or irrelevant dependency families from the JSON report.
 
 The report contract is documented in [the JSON Schema](docs/modulens-full-report.schema.json). `schemaVersion` follows a compatibility policy: additive fields remain in the current version; incompatible field changes require a new version. Findings include explicit module, library, and module-edge references so tools do not need to parse human-readable messages.
-
-## CI verification
-
-Use `moduLensVerify` in CI after configuring the verification policy. It checks the same underlying findings as local analysis, plus configured dependency limits.
-
-```bash
-./gradlew moduLensVerify
-```
-
-The defaults are conservative:
-
-- Cycles fail the build.
-- Version conflicts and redundant dependencies are reported locally but do not fail CI unless enabled.
-- Depth and direct-dependency limits are disabled until configured.
-
-When a rule fails, the output includes the rule, affected subject, dependency path where available, and a suggested fix.
 
 ## License
 

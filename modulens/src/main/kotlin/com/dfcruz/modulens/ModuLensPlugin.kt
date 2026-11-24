@@ -10,7 +10,6 @@ import com.dfcruz.modulens.task.LibraryInventoryTask
 import com.dfcruz.modulens.task.ModuleAnalysisTask
 import com.dfcruz.modulens.task.ProjectAnalysisTask
 import com.dfcruz.modulens.task.TaskInputCodec
-import com.dfcruz.modulens.task.VerificationTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.create
@@ -197,26 +196,6 @@ class ModuLensPlugin : Plugin<Project> {
                 }
             }
 
-            project.tasks.register<VerificationTask>("moduLensVerify") {
-                group = "ModuLens"
-                description =
-                    "Verifies configured ModuLens dependency and architecture policies for CI."
-                this.graph.set(graph)
-                this.libraryDeclarations.set(declaredLibraries)
-                this.resolvedLibraries.set(project.provider {
-                    if (extension.verification.failOnVersionConflicts.get()) {
-                        ExternalLibraryResolver.resolveLibraryCoordinates(
-                            project,
-                            projectDependencyGraph.libraryCoordinates(selectedScopes)
-                        )
-                    } else emptyList()
-                })
-                this.failOnCycles.set(extension.verification.failOnCycles)
-                this.maxDependencyDepth.set(extension.verification.maxDependencyDepth)
-                this.maxDirectDependencies.set(extension.verification.maxDirectDependencies)
-                this.failOnVersionConflicts.set(extension.verification.failOnVersionConflicts)
-                this.failOnRedundantDependencies.set(extension.verification.failOnRedundantDependencies)
-            }
         }
     }
 

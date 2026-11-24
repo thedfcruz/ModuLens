@@ -2,8 +2,6 @@ package com.dfcruz.modulens.analysis
 
 enum class FindingId(val ruleName: String) {
     DEPENDENCY_CYCLE("cycle"),
-    MAXIMUM_DEPENDENCY_DEPTH("maximum dependency depth"),
-    MAXIMUM_DIRECT_DEPENDENCIES("maximum direct dependencies"),
     REDUNDANT_MODULE_DEPENDENCY("redundant module dependency"),
     VERSION_CONFLICT("version conflict"),
 }
@@ -54,14 +52,6 @@ object ProjectFindingsAnalyzer {
 
     fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> =
         defaultAnalyzers.flatMap { it.analyze(snapshot) }.sortedWith(findingOrder)
-
-    fun analyzeForVerification(
-        snapshot: FindingAnalysisSnapshot,
-        policy: VerificationPolicy
-    ): List<Finding> =
-        (analyze(snapshot) + ThresholdFindingAnalyzer(policy).analyze(snapshot)).sortedWith(
-            findingOrder
-        )
 
     private val findingOrder = compareBy<Finding>({ it.id.ordinal }, { it.subject }, { it.message })
 }
@@ -138,37 +128,4 @@ object VersionConflictFindingAnalyzer : FindingAnalyzer {
                 suggestedFix = "Align this dependency to one version, preferably through the version catalog or a platform/BOM.",
             )
         }
-}
-
-private class ThresholdFindingAnalyzer(private val policy: VerificationPolicy) : FindingAnalyzer {
-    override fun analyze(snapshot: FindingAnalysisSnapshot): List<Finding> = buildList {
-        val project = snapshot.graph.analyzeProject()
-        if (project.maximumDependencyDepth > policy.maxDependencyDepth) {
-            add(
-                Finding(
-                    id = FindingId.MAXIMUM_DEPENDENCY_DEPTH,
-                    severity = FindingSeverity.ERROR,
-                    subject = "project",
-                    message = "Dependency depth ${project.maximumDependencyDepth} exceeds the configured maximum of ${policy.maxDependencyDepth}.",
-                    references = FindingReferences(modules = snapshot.graph.modules.sorted()),
-                    suggestedFix = "Reduce the longest module dependency chain or raise the configured limit deliberately.",
-                ),
-            )
-        }
-        snapshot.graph.modules.sorted().forEach { module ->
-            val count = snapshot.graph.directDependencies(module).size
-            if (count > policy.maxDirectDependencies) {
-                add(
-                    Finding(
-                        id = FindingId.MAXIMUM_DIRECT_DEPENDENCIES,
-                        severity = FindingSeverity.ERROR,
-                        subject = module,
-                        message = "$module has $count direct dependencies; the configured maximum is ${policy.maxDirectDependencies}.",
-                        references = FindingReferences(modules = listOf(module)),
-                        suggestedFix = "Remove unnecessary direct dependencies or split this module's responsibilities.",
-                    ),
-                )
-            }
-        }
-    }
 }

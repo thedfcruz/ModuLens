@@ -12,7 +12,6 @@ abstract class ModuLensExtension @Inject constructor(objects: ObjectFactory) {
     val excludedModules: SetProperty<String> = objects.setProperty(String::class.java)
     val analysis: ModuLensAnalysisExtension = objects.newInstance(ModuLensAnalysisExtension::class.java)
     val report: ModuLensReportExtension = objects.newInstance(ModuLensReportExtension::class.java)
-    val verification: ModuLensVerificationExtension = objects.newInstance(ModuLensVerificationExtension::class.java)
 
     init {
         scopes.convention(setOf(DependencyScope.PRODUCTION))
@@ -22,8 +21,6 @@ abstract class ModuLensExtension @Inject constructor(objects: ObjectFactory) {
     fun analysis(action: Action<in ModuLensAnalysisExtension>) = action.execute(analysis)
 
     fun report(action: Action<in ModuLensReportExtension>) = action.execute(report)
-
-    fun verification(action: Action<in ModuLensVerificationExtension>) = action.execute(verification)
 }
 
 abstract class ModuLensReportExtension @Inject constructor(objects: ObjectFactory) {
@@ -40,12 +37,4 @@ abstract class ModuLensAnalysisExtension @Inject constructor(objects: ObjectFact
     val resolveExternalLibraries: Property<Boolean> = objects.property(Boolean::class.java).convention(true)
     val exportText: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
     val exportHtml: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-}
-
-abstract class ModuLensVerificationExtension @Inject constructor(objects: ObjectFactory) {
-    val failOnCycles: Property<Boolean> = objects.property(Boolean::class.java).convention(true)
-    val maxDependencyDepth: Property<Int> = objects.property(Int::class.java).convention(Int.MAX_VALUE)
-    val maxDirectDependencies: Property<Int> = objects.property(Int::class.java).convention(Int.MAX_VALUE)
-    val failOnVersionConflicts: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
-    val failOnRedundantDependencies: Property<Boolean> = objects.property(Boolean::class.java).convention(false)
 }

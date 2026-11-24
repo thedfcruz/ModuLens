@@ -24,12 +24,4 @@ moduLens {
         includeLibraryUsageModules.set(true)
     }
 
-    verification {
-        failOnCycles.set(true)
-        failOnVersionConflicts.set(true)
-        // The sample deliberately contains a redundant direct dependency for analysis demonstrations.
-        failOnRedundantDependencies.set(false)
-        maxDependencyDepth.set(3)
-        maxDirectDependencies.set(5)
-    }
 }
